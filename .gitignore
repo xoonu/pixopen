@@ -1,0 +1,11 @@
+node_modules/
+dist/
+data/projects/
+data/settings.json
+packages/server/data/projects/
+packages/server/data/devices.json
+packages/server/data/settings.json
+.DS_Store
+*.log
+.env
+.env.local

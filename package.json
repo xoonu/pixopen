@@ -1,0 +1,13 @@
+{
+  "name": "pixopen",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "npm run build -w @pixopen/core && npm run build -w @pixopen/device && npm run build -w @pixopen/datasources && npm run build -w @pixopen/renderer && npm run build -w @pixopen/server && npm run build -w @pixopen/web",
+    "dev": "npm run dev -w @pixopen/server",
+    "dev:web": "npm run dev -w @pixopen/web",
+    "serve": "npm run build -w @pixopen/web && npm run start -w @pixopen/server",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": { "node": ">=20" }
+}
