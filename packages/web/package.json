@@ -10,10 +10,14 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.1",
+    "@hugeicons/react": "^1.1.7",
     "@pixopen/core": "*",
     "@pixopen/renderer": "*",
+    "@tailwindcss/vite": "^4.3.1",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
     "@types/react": "^19.1.2",

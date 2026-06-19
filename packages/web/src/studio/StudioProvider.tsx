@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CANVAS_SIZE, clampRect, createEmptyFrame, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseVestaNoteUi, type Frame, type LiveArea, type Project, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, createEmptyFrame, EDITOR_CANVAS_BASE_ZOOM, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseFlipNoteUi, type Frame, type Project, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { cloneProject, useProjectHistory } from '../hooks/useProjectHistory';
 
@@ -23,8 +23,12 @@ export type StudioEditorApi = {
   status: string;
   setStatus: React.Dispatch<React.SetStateAction<string>>;
   previewPixels: number[] | null;
+  /** True when the server has an active live runtime (any project). */
   liveRuntimeActive: boolean;
+  /** Which project is streaming live, if any. */
+  liveRuntimeProjectId: string | null;
   runtimeError: string | null;
+  refreshRuntimeStatus: () => void;
   datasources: Awaited<ReturnType<typeof api.datasources.list>>;
   liveDraft: { x: number; y: number; w: number; h: number; datasourceId?: string; widgetId?: string; config?: Record<string, unknown> };
   setLiveDraft: React.Dispatch<React.SetStateAction<{ x: number; y: number; w: number; h: number; datasourceId?: string; widgetId?: string; config?: Record<string, unknown> }>>;
@@ -104,10 +108,11 @@ export function StudioProvider({
   const [frameIndex, setFrameIndex] = useState(0);
   const [tool, setTool] = useState<StudioTool>('pencil');
   const [color, setColor] = useState('#4f7cff');
-  const [editorZoom, setEditorZoom] = useState(8);
+  const [editorZoom, setEditorZoom] = useState(EDITOR_CANVAS_BASE_ZOOM);
   const [status, setStatus] = useState('');
   const [previewPixels, setPreviewPixels] = useState<number[] | null>(null);
   const [liveRuntimeActive, setLiveRuntimeActive] = useState(false);
+  const [liveRuntimeProjectId, setLiveRuntimeProjectId] = useState<string | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [datasources, setDatasources] = useState<Awaited<ReturnType<typeof api.datasources.list>>>([]);
   const [liveDraft, setLiveDraft] = useState<{ x: number; y: number; w: number; h: number; datasourceId?: string; widgetId?: string; config?: Record<string, unknown> }>({ x: 2, y: 2, w: 28, h: 10 });
@@ -159,18 +164,26 @@ export function StudioProvider({
     return () => ws.close();
   }, [active]);
 
+  const refreshRuntimeStatus = useCallback(() => {
+    void api.runtime.status().then((s) => {
+      if (s.running && s.projectId) {
+        setLiveRuntimeActive(true);
+        setLiveRuntimeProjectId(s.projectId);
+        setRuntimeError(s.lastError ?? null);
+      } else {
+        setLiveRuntimeActive(false);
+        setLiveRuntimeProjectId(null);
+        setRuntimeError(null);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (!active) return;
-    const poll = () => {
-      void api.runtime.status().then((s) => {
-        setLiveRuntimeActive(s.running);
-        setRuntimeError(s.running && 'lastError' in s && s.lastError ? s.lastError : null);
-      });
-    };
-    poll();
-    const id = window.setInterval(poll, 2000);
+    refreshRuntimeStatus();
+    const id = window.setInterval(refreshRuntimeStatus, 2000);
     return () => window.clearInterval(id);
-  }, [active, projectId]);
+  }, [active, projectId, refreshRuntimeStatus]);
 
   useEffect(() => {
     if (tool !== 'live-area') setLiveRegionPreview(null);
@@ -183,7 +196,7 @@ export function StudioProvider({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    if (project.templateId === 'vesta-note' || shouldUseVestaNoteUi(project)) return;
+    if (project.templateId === 'flip-note' || shouldUseFlipNoteUi(project)) return;
 
     if (!currentFrame) return;
     ctx.putImageData(frameToImageData(currentFrame), 0, 0);
@@ -380,25 +393,27 @@ export function StudioProvider({
   }, [applyProject, project]);
 
   const save = useCallback(async (): Promise<Project> => {
-    if (!project) throw new Error('No project loaded');
+    const current = projectRef.current;
+    if (!current) throw new Error('No project loaded');
     try {
-      const saved = await api.projects.update(project);
-      setProject(saved);
+      const saved = await api.projects.update(current);
+      setProject({ ...saved, appConfig: { ...current.appConfig, ...saved.appConfig } });
       setProjects((prev) => {
         const idx = prev.findIndex((p) => p.id === saved.id);
-        if (idx < 0) return [saved, ...prev];
+        const merged = { ...saved, appConfig: { ...current.appConfig, ...saved.appConfig } };
+        if (idx < 0) return [merged, ...prev];
         const next = [...prev];
-        next[idx] = saved;
+        next[idx] = merged;
         return next.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       });
       setStatus(`Saved "${saved.name}"`);
-      return saved;
+      return { ...saved, appConfig: { ...current.appConfig, ...saved.appConfig } };
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Save failed';
       setStatus(message);
       throw new Error(message);
     }
-  }, [project]);
+  }, []);
 
   const nameConflict =
     project &&
@@ -408,7 +423,7 @@ export function StudioProvider({
 
   const projectTypeLabel = project ? formatProjectTypeLabel(project.type) : '';
   const drawingTools = (() => {
-    if (!project || project.type === 'image-frame' || shouldUseVestaNoteUi(project)) return [] as StudioTool[];
+    if (!project || project.type === 'image-frame' || shouldUseFlipNoteUi(project)) return [] as StudioTool[];
     if (project.type === 'live-sign') return ['pencil', 'eraser', 'fill', 'live-area'] as StudioTool[];
     return ['pencil', 'eraser', 'fill'] as StudioTool[];
   })();
@@ -437,7 +452,9 @@ export function StudioProvider({
     setStatus,
     previewPixels,
     liveRuntimeActive,
+    liveRuntimeProjectId,
     runtimeError,
+    refreshRuntimeStatus,
     datasources,
     liveDraft,
     setLiveDraft,
@@ -473,7 +490,7 @@ export function StudioProvider({
     cloneProject,
   }), [
     project, projects, projectId, frameIndex, frameCount, currentFrame, tool, color, editorZoom, status,
-    previewPixels, liveRuntimeActive, runtimeError, datasources, liveDraft, liveRegionPreview, importImageFile, canUndo, canRedo,
+    previewPixels, liveRuntimeActive, liveRuntimeProjectId, runtimeError, refreshRuntimeStatus, datasources, liveDraft, liveRegionPreview, importImageFile, canUndo, canRedo,
     handleUndo, handleRedo, save, nameConflict, projectTypeLabel, drawingTools, thumbs, updateFrame,
     applyProject, addBlankFrame, duplicateCurrentFrame, removeCurrentFrame, reorderFrame, getPos, floodFill, paint, commitStroke,
   ]);

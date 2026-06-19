@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { CANVAS_SIZE } from '@pixopen/core';
-import { parseVestaNoteConfig, renderVestaNotePreview } from '@pixopen/renderer';
+import { parseFlipNoteConfig, renderFlipNotePreview } from '@pixopen/renderer';
 
 type Props = {
   appConfig?: Record<string, unknown>;
@@ -20,7 +20,7 @@ function putFramePixels(ctx: CanvasRenderingContext2D, pixels: number[]) {
   }
 }
 
-export function VestaNotePreview({ appConfig = {}, scale = 6, playing = true, className = '' }: Props) {
+export function FlipNotePreview({ appConfig = {}, scale = 6, playing = true, className = '' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const configRef = useRef(appConfig);
   const playingRef = useRef(playing);
@@ -37,9 +37,9 @@ export function VestaNotePreview({ appConfig = {}, scale = 6, playing = true, cl
     let raf = 0;
 
     const draw = () => {
-      const config = parseVestaNoteConfig(configRef.current);
+      const config = parseFlipNoteConfig(configRef.current);
       const elapsed = playingRef.current ? Date.now() - start : 0;
-      const frame = renderVestaNotePreview(config, elapsed);
+      const frame = renderFlipNotePreview(config, elapsed);
       putFramePixels(ctx, frame.pixels);
       raf = requestAnimationFrame(draw);
     };
@@ -53,9 +53,9 @@ export function VestaNotePreview({ appConfig = {}, scale = 6, playing = true, cl
       ref={canvasRef}
       width={CANVAS_SIZE}
       height={CANVAS_SIZE}
-      className={`vesta-preview-canvas ${className}`.trim()}
+      className={`flip-note-preview-canvas ${className}`.trim()}
       style={{ width: CANVAS_SIZE * scale, height: CANVAS_SIZE * scale }}
-      aria-label="Split-flap board preview"
+      aria-label="Flip Note board preview"
     />
   );
 }

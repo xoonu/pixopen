@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import {
-  normalizeVestaAppConfig,
+  normalizeFlipNoteAppConfig,
+  type FlipNoteConfig,
   type Project,
-  type VestaNoteConfig,
-  type VestaNoteLetterColorMode,
 } from '@pixopen/core';
 import { Field } from './ControlSection';
-import { VestaNotePreview } from './VestaNotePreview';
+import { FlipNotePreview } from './FlipNotePreview';
 
 type Props = {
   project: Project;
@@ -32,25 +31,19 @@ function blocksToMessages(blocks: string[][]): string[] {
   return blocks.flatMap((block) => block.map((line) => sanitizeLine(line)));
 }
 
-function configFrom(project: Project): VestaNoteConfig {
-  return normalizeVestaAppConfig(project.appConfig);
+function configFrom(project: Project): FlipNoteConfig {
+  return normalizeFlipNoteAppConfig(project.appConfig);
 }
 
-export function VestaNoteStudio({ project, onChange }: Props) {
+export function FlipNoteStudio({ project, onChange }: Props) {
   const config = configFrom(project);
   const [previewPlaying, setPreviewPlaying] = useState(true);
   const [previewScale, setPreviewScale] = useState(8);
   const blocks = messagesToBlocks(config.messages, config.boardLines);
   const messageCount = blocks.length;
 
-  const applyConfig = (next: VestaNoteConfig) => {
+  const applyConfig = (next: FlipNoteConfig) => {
     onChange({ ...next });
-  };
-
-  const setBoardLines = (boardLines: 1 | 2 | 3) => {
-    const regrouped = blocksToMessages(blocks);
-    const nextBlocks = messagesToBlocks(regrouped, boardLines);
-    applyConfig({ ...config, boardLines, messages: blocksToMessages(nextBlocks) });
   };
 
   const updateBlockLine = (blockIndex: number, lineIndex: number, value: string) => {
@@ -73,36 +66,24 @@ export function VestaNoteStudio({ project, onChange }: Props) {
     applyConfig({ ...config, messages: blocksToMessages(nextBlocks) });
   };
 
-  const updateTiming = (patch: Partial<Pick<VestaNoteConfig, 'holdMs' | 'flipMs'>>) => {
+  const updateTiming = (patch: Partial<Pick<FlipNoteConfig, 'holdMs' | 'flipMs'>>) => {
     applyConfig({ ...config, ...patch });
   };
 
-  const updateColorMode = (letterColorMode: VestaNoteLetterColorMode) => {
-    applyConfig({ ...config, letterColorMode });
-  };
-
   return (
-    <div className="vesta-studio">
-      <header className="vesta-studio-header">
-        <h2>Vesta Note</h2>
-        <p className="muted">
-          Split-flap letter board — add messages below. Each message shows {config.boardLines} line
-          {config.boardLines === 1 ? '' : 's'} on the board, then flips to the next.
-        </p>
-      </header>
-
-      <section className="vesta-preview-panel" aria-label="Animation preview">
-        <div className="vesta-preview-toolbar">
+    <div className="flip-note-studio">
+      <section className="flip-note-preview-panel" aria-label="Animation preview">
+        <div className="flip-note-preview-toolbar">
           <span className="field-label">Preview</span>
-          <div className="vesta-preview-controls">
+          <div className="flip-note-preview-controls">
             <button
               type="button"
-              className="primary"
+              className="btn btn-primary btn-sm"
               onClick={() => setPreviewPlaying((p) => !p)}
             >
               {previewPlaying ? 'Pause' : 'Play'} animation
             </button>
-            <label className="vesta-zoom-control">
+            <label className="flip-note-zoom-control">
               <span className="muted">Zoom</span>
               <input
                 type="range"
@@ -114,83 +95,37 @@ export function VestaNoteStudio({ project, onChange }: Props) {
             </label>
           </div>
         </div>
-        <div className="vesta-preview-stage">
-          <VestaNotePreview
+        <div className="flip-note-preview-stage">
+          <FlipNotePreview
             appConfig={project.appConfig}
             scale={previewScale}
             playing={previewPlaying}
           />
         </div>
-        <p className="muted vesta-preview-hint">
+        <p className="muted flip-note-preview-hint">
           {previewPlaying
             ? 'Animation is running — edit messages anytime to update the preview.'
-            : 'Paused — click Play to see messages flip.'}
+            : 'Paused — click Play to see messages refresh.'}
         </p>
       </section>
 
-      <section className="vesta-appearance-panel">
-        <h3 className="vesta-section-title">Board</h3>
-        <div className="vesta-appearance-grid">
-          <Field label="Lines on board" htmlFor="vesta-board-lines">
-            <select
-              id="vesta-board-lines"
-              value={config.boardLines}
-              onChange={(e) => setBoardLines(Number(e.target.value) as 1 | 2 | 3)}
-            >
-              <option value={1}>1 line</option>
-              <option value={2}>2 lines</option>
-              <option value={3}>3 lines</option>
-            </select>
-          </Field>
-          <Field label="Letter color" htmlFor="vesta-letter-color-mode">
-            <select
-              id="vesta-letter-color-mode"
-              value={config.letterColorMode}
-              onChange={(e) => updateColorMode(e.target.value as VestaNoteLetterColorMode)}
-            >
-              <option value="classic">Classic (cream)</option>
-              <option value="monochrome">Black &amp; white</option>
-              <option value="custom">Custom color</option>
-            </select>
-          </Field>
-          {config.letterColorMode === 'custom' ? (
-            <Field label="Pick color" htmlFor="vesta-letter-color">
-              <div className="vesta-color-picker-row">
-                <input
-                  id="vesta-letter-color"
-                  type="color"
-                  value={config.letterColor}
-                  onChange={(e) => applyConfig({ ...config, letterColor: e.target.value })}
-                />
-                <input
-                  type="text"
-                  value={config.letterColor}
-                  spellCheck={false}
-                  onChange={(e) => applyConfig({ ...config, letterColor: e.target.value })}
-                />
-              </div>
-            </Field>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="vesta-messages-panel">
-        <div className="vesta-messages-header">
-          <h3 className="vesta-section-title">Messages</h3>
+      <section className="flip-note-messages-panel">
+        <div className="flip-note-messages-header">
+          <h3 className="flip-note-section-title">Messages</h3>
           <button type="button" onClick={addMessage}>Add message</button>
         </div>
-        <p className="muted vesta-messages-hint">
+        <p className="muted flip-note-messages-hint">
           {messageCount} message{messageCount === 1 ? '' : 's'} · up to 8 characters per line
         </p>
-        <div className="vesta-message-list">
+        <div className="flip-note-message-list">
           {blocks.map((block, blockIndex) => (
-            <article key={blockIndex} className="vesta-message-block">
-              <div className="vesta-message-block-head">
-                <span className="vesta-message-block-label">Message {blockIndex + 1}</span>
+            <article key={blockIndex} className="flip-note-message-block">
+              <div className="flip-note-message-block-head">
+                <span className="flip-note-message-block-label">Message {blockIndex + 1}</span>
                 {blocks.length > 1 ? (
                   <button
                     type="button"
-                    className="danger vesta-message-remove"
+                    className="btn btn-error btn-xs"
                     onClick={() => removeMessage(blockIndex)}
                   >
                     Remove
@@ -200,7 +135,7 @@ export function VestaNoteStudio({ project, onChange }: Props) {
               {block.map((line, lineIndex) => (
                 <input
                   key={lineIndex}
-                  className="vesta-message-line"
+                  className="flip-note-message-line"
                   value={line}
                   placeholder={
                     config.boardLines === 1
@@ -216,10 +151,10 @@ export function VestaNoteStudio({ project, onChange }: Props) {
         </div>
       </section>
 
-      <section className="vesta-timing-panel">
-        <Field label="Display each message (seconds)" htmlFor="vesta-hold-sec">
+      <section className="flip-note-timing-panel">
+        <Field label="Display each message (seconds)" htmlFor="flip-note-hold-sec">
           <input
-            id="vesta-hold-sec"
+            id="flip-note-hold-sec"
             type="number"
             min={0.5}
             step={0.5}
@@ -227,9 +162,9 @@ export function VestaNoteStudio({ project, onChange }: Props) {
             onChange={(e) => updateTiming({ holdMs: Math.max(500, Number(e.target.value) * 1000) })}
           />
         </Field>
-        <Field label="Flip animation (seconds)" htmlFor="vesta-flip-sec">
+        <Field label="Refresh animation (seconds)" htmlFor="flip-note-flip-sec">
           <input
-            id="vesta-flip-sec"
+            id="flip-note-flip-sec"
             type="number"
             min={0.1}
             step={0.05}

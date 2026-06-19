@@ -23,7 +23,8 @@ export const api = {
   },
   devices: {
     list: () => request<SavedDevice[]>('/api/devices'),
-    discover: () => request<SavedDevice[]>('/api/devices/discover', { method: 'POST' }),
+    discover: () =>
+      request<{ devices: SavedDevice[]; discovered: SavedDevice[] }>('/api/devices/discover', { method: 'POST' }),
     add: (ip: string, name?: string) =>
       request<SavedDevice>('/api/devices', {
         method: 'POST',
@@ -101,9 +102,10 @@ export const api = {
       if (!res.ok) throw new Error('GIF import failed');
       return res.json() as Promise<{ frames: Frame[]; delays: number[] }>;
     },
-    video: async (file: File) => {
+    video: async (file: File, opts?: { maxFrames?: number }) => {
       const fd = new FormData();
       fd.append('file', file);
+      if (opts?.maxFrames != null) fd.append('maxFrames', String(opts.maxFrames));
       const res = await fetch('/api/import/video', { method: 'POST', body: fd });
       if (!res.ok) {
         const text = await res.text();
@@ -119,7 +121,17 @@ export const api = {
     videoStatus: () => request<{ available: boolean }>('/api/import/video/status'),
   },
   runtime: {
-    status: () => request<{ running: boolean; projectId?: string; lastError?: string }>('/api/runtime/status'),
+    status: () =>
+      request<
+        | { running: false }
+        | { running: true; projectId: string; deviceIp: string; lastError?: string | null; tick?: number }
+      >('/api/runtime/status'),
     stop: () => request<{ ok: boolean }>('/api/runtime/stop', { method: 'POST' }),
+    sync: (projectId: string, appConfig: Record<string, unknown>) =>
+      request<{ ok: boolean; synced: boolean }>('/api/runtime/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, appConfig }),
+      }),
   },
 };

@@ -13,6 +13,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "generate:font": "node scripts/generate-flip-note-font.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "@pixopen/datasources": "*"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.0.0",
     "typescript": "^5.8.3"
   }
 }

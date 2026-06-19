@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CANVAS_SIZE, type Frame } from '@pixopen/core';
 
+/** CSS display scale for the 64×64 preview canvas. */
+const PREVIEW_SCALE = 6;
+
 export type ImagePlacement = {
   zoom: number;
   offsetX: number;
@@ -14,6 +17,9 @@ type Props = {
   baseFrame: Frame | null;
   onApply: (frame: Frame) => void;
   onCancel: () => void;
+  applyLabel?: string;
+  title?: string;
+  hint?: string;
 };
 
 function renderPlacedImage(
@@ -53,7 +59,15 @@ function renderPlacedImage(
   };
 }
 
-export function ImageImportModal({ file, baseFrame, onApply, onCancel }: Props) {
+export function ImageImportModal({
+  file,
+  baseFrame,
+  onApply,
+  onCancel,
+  applyLabel = 'Apply to current frame',
+  title = 'Place image on frame',
+  hint = 'Adjust scale and position, then apply to the current frame.',
+}: Props) {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [placement, setPlacement] = useState<ImagePlacement>({
     zoom: 1,
@@ -94,6 +108,10 @@ export function ImageImportModal({ file, baseFrame, onApply, onCancel }: Props) 
     ctx.putImageData(imageData, 0, 0);
   }, [previewFrame]);
 
+  const resetPlacement = () => {
+    setPlacement((p) => ({ zoom: 1, offsetX: 0, offsetY: 0, merge: p.merge, smoothing: p.smoothing }));
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     dragging.current = true;
     dragStart.current = {
@@ -107,9 +125,8 @@ export function ImageImportModal({ file, baseFrame, onApply, onCancel }: Props) 
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!dragging.current) return;
-    const scale = 4;
-    const dx = (e.clientX - dragStart.current.x) / scale;
-    const dy = (e.clientY - dragStart.current.y) / scale;
+    const dx = (e.clientX - dragStart.current.x) / PREVIEW_SCALE;
+    const dy = (e.clientY - dragStart.current.y) / PREVIEW_SCALE;
     setPlacement((p) => ({
       ...p,
       offsetX: Math.round(dragStart.current.ox + dx),
@@ -123,67 +140,66 @@ export function ImageImportModal({ file, baseFrame, onApply, onCancel }: Props) 
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="image-import-title">
-      <div className="modal panel image-import-modal">
-        <h3 id="image-import-title">Place image on frame</h3>
-        <p className="muted">Adjust scale and position, then apply to the current frame.</p>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="image-import-title">
+      <div className="modal-panel modal-panel-image-import">
+        <header className="image-import-header">
+          <div className="image-import-header-copy">
+            <h3 id="image-import-title" className="font-bold text-xl m-0">{title}</h3>
+            <p className="text-sm text-muted m-0 mt-1">{hint}</p>
+            <p className="text-xs text-muted m-0 mt-1 truncate" title={file.name}>{file.name}</p>
+          </div>
+          <div className="image-import-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!previewFrame}
+              onClick={() => previewFrame && onApply(previewFrame)}
+            >
+              {applyLabel}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={resetPlacement}>
+              Reset
+            </button>
+          </div>
+        </header>
 
         <div className="image-import-layout">
           <div className="image-import-preview-wrap">
             <canvas
               ref={previewRef}
-              width={64}
-              height={64}
+              width={CANVAS_SIZE}
+              height={CANVAS_SIZE}
               className="image-import-canvas"
+              style={{ width: CANVAS_SIZE * PREVIEW_SCALE, height: CANVAS_SIZE * PREVIEW_SCALE }}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerLeave={onPointerUp}
             />
-            <p className="muted image-import-hint">Drag preview to reposition</p>
+            <p className="text-sm text-muted image-import-hint m-0">Drag preview to reposition</p>
           </div>
 
           <div className="image-import-controls">
-            <label className="control-row">
-              <span className="field-label">Scale</span>
-              <input
-                type="range"
-                min={0.25}
-                max={4}
-                step={0.05}
-                value={placement.zoom}
-                onChange={(e) => setPlacement((p) => ({ ...p, zoom: Number(e.target.value) }))}
-              />
-              <span className="control-value">{placement.zoom.toFixed(2)}×</span>
+            <label className="image-import-field">
+              <span className="image-import-field-label">Scale</span>
+              <div className="image-import-field-row">
+                <input
+                  type="range"
+                  min={0.25}
+                  max={4}
+                  step={0.05}
+                  value={placement.zoom}
+                  onChange={(e) => setPlacement((p) => ({ ...p, zoom: Number(e.target.value) }))}
+                />
+                <span className="image-import-field-value">{placement.zoom.toFixed(2)}×</span>
+              </div>
             </label>
 
-            <label className="control-row">
-              <span className="field-label">Move left / right</span>
-              <input
-                type="range"
-                min={-48}
-                max={48}
-                value={placement.offsetX}
-                onChange={(e) => setPlacement((p) => ({ ...p, offsetX: Number(e.target.value) }))}
-              />
-              <span className="control-value">{placement.offsetX}</span>
-            </label>
-
-            <label className="control-row">
-              <span className="field-label">Move up / down</span>
-              <input
-                type="range"
-                min={-48}
-                max={48}
-                value={placement.offsetY}
-                onChange={(e) => setPlacement((p) => ({ ...p, offsetY: Number(e.target.value) }))}
-              />
-              <span className="control-value">{placement.offsetY}</span>
-            </label>
-
-            <label className="control-row">
-              <span className="field-label">How to apply</span>
+            <label className="image-import-field">
+              <span className="image-import-field-label">How to apply</span>
               <select
+                className="select"
                 value={placement.merge}
                 onChange={(e) => setPlacement((p) => ({ ...p, merge: e.target.value as ImagePlacement['merge'] }))}
               >
@@ -192,28 +208,16 @@ export function ImageImportModal({ file, baseFrame, onApply, onCancel }: Props) 
               </select>
             </label>
 
-            <label className="control-row checkbox-row">
+            <label className="checkbox-field image-import-checkbox">
               <input
                 type="checkbox"
+                className="checkbox"
                 checked={placement.smoothing}
                 onChange={(e) => setPlacement((p) => ({ ...p, smoothing: e.target.checked }))}
               />
-              <span>Smooth edges when scaling (leave off for crisp pixels)</span>
+              <span>Smooth edges when scaling</span>
             </label>
           </div>
-        </div>
-
-        <div className="toolbar modal-actions">
-          <button type="button" className="primary" disabled={!previewFrame} onClick={() => previewFrame && onApply(previewFrame)}>
-            Apply to current frame
-          </button>
-          <button type="button" onClick={onCancel}>Cancel</button>
-          <button
-            type="button"
-            onClick={() => setPlacement({ zoom: 1, offsetX: 0, offsetY: 0, merge: placement.merge, smoothing: placement.smoothing })}
-          >
-            Reset scale & position
-          </button>
         </div>
       </div>
     </div>

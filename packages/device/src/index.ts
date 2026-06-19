@@ -52,19 +52,36 @@ async function prepareCustomDisplay(ip: string): Promise<PixooClient> {
   return client;
 }
 
+async function sendStreamFrame(client: PixooClient, canvas: Canvas, picId: number, ip: string): Promise<number> {
+  const nextPicId = (picId + 1) % 10000;
+  const pushed = await client.send('Draw/SendHttpGif', {
+    PicNum: 1,
+    PicWidth: canvas.width,
+    PicOffset: 0,
+    PicID: nextPicId,
+    PicSpeed: 100,
+    PicData: canvas.toBase64(),
+  });
+  throwIfFailed(pushed, ip);
+  return nextPicId;
+}
+
 export type PixooStream = {
   push: (frame: Frame) => Promise<void>;
 };
 
-/** Open a persistent Custom-channel session for repeated frame pushes (live signs). */
+/** Open a persistent Custom-channel session for repeated frame pushes (live frames). */
 export async function openPixooStream(ip: string): Promise<PixooStream> {
   const trimmed = ip.trim();
   const client = await prepareCustomDisplay(trimmed);
+  // Reset once when opening the stream — not before every frame (that reboots/overloads the device).
+  throwIfFailed(await client.resetGifId(), trimmed);
+  let picId = Date.now() % 10000;
+
   return {
     async push(frame: Frame) {
       const canvas = frameToCanvas(frame);
-      const pushed = await client.push(canvas, 100);
-      throwIfFailed(pushed, trimmed);
+      picId = await sendStreamFrame(client, canvas, picId, trimmed);
     },
   };
 }

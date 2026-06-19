@@ -37,7 +37,7 @@ import {
   saveDevices,
   saveProject,
 } from './storage.js';
-import { getRuntimeStatus, startRuntime, stopRuntime } from './runtime.js';
+import { getRuntimeStatus, startRuntime, stopRuntime, syncRuntimeProject } from './runtime.js';
 
 export function createApp(options?: { webDist?: string }) {
   const app = new Hono();
@@ -58,7 +58,7 @@ export function createApp(options?: { webDist?: string }) {
       else merged.push(d);
     }
     await saveDevices(merged);
-    return c.json(merged);
+    return c.json({ devices: merged, discovered });
   });
 
   app.post('/api/devices', async (c) => {
@@ -175,6 +175,7 @@ export function createApp(options?: { webDist?: string }) {
       updatedAt: new Date().toISOString(),
     });
     await saveProject(project);
+    syncRuntimeProject(project);
     return c.json(project);
   });
 
@@ -203,11 +204,13 @@ export function createApp(options?: { webDist?: string }) {
       if (!project) return c.json({ error: 'Project not found' }, 404);
       ({ deviceIp } = await c.req.json<{ deviceIp: string }>());
       if (!deviceIp?.trim()) return c.json({ error: 'No Pixoo device selected' }, 400);
-      if (project.type === 'live-sign') return c.json({ error: 'Use Run on Pixoo for live signs' }, 400);
+      if (project.type === 'live-sign') return c.json({ error: 'Use Run on Pixoo for live frames' }, 400);
       if (project.frames.length === 0) return c.json({ error: 'Project has no frames to deploy' }, 400);
 
       const reachable = await checkDevice(deviceIp);
       if (!reachable.ok) return c.json({ error: reachable.error }, 502);
+
+      await stopRuntime();
 
       if (project.frames.length === 1) {
         await pushFrame(deviceIp, project.frames[0]);
@@ -255,6 +258,22 @@ export function createApp(options?: { webDist?: string }) {
 
   app.get('/api/runtime/status', (c) => c.json(getRuntimeStatus()));
 
+  app.post('/api/runtime/sync', async (c) => {
+    const body = await c.req.json<{ projectId: string; appConfig: Record<string, unknown> }>();
+    if (!body.projectId) return c.json({ error: 'projectId required' }, 400);
+    const status = getRuntimeStatus();
+    if (!status.running || status.projectId !== body.projectId) {
+      return c.json({ ok: true, synced: false });
+    }
+    const current = await getProject(body.projectId);
+    if (!current) return c.json({ error: 'Project not found' }, 404);
+    syncRuntimeProject({
+      ...current,
+      appConfig: { ...current.appConfig, ...body.appConfig },
+    });
+    return c.json({ ok: true, synced: true });
+  });
+
   app.get('/api/datasources', (c) => c.json(listDataSources()));
   app.get('/api/widgets', (c) => c.json(WIDGETS));
 
@@ -288,7 +307,12 @@ export function createApp(options?: { webDist?: string }) {
       const file = body['file'];
       if (!(file instanceof File)) return c.json({ error: 'file required' }, 400);
       const buffer = Buffer.from(await file.arrayBuffer());
-      const { frames, delays } = await importVideo(buffer);
+      const maxFramesRaw = body['maxFrames'];
+      const maxFrames =
+        maxFramesRaw != null && String(maxFramesRaw).trim() !== ''
+          ? Number(maxFramesRaw)
+          : undefined;
+      const { frames, delays } = await importVideo(buffer, { maxFrames });
       return c.json({ frames, delays });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Video import failed';

@@ -114,7 +114,7 @@ export function renderWidgetIntoArea(
   );
 }
 
-export { renderVestaNoteBoard, renderVestaNotePreview, parseVestaNoteConfig } from './splitFlap.js';
+export { renderFlipNoteBoard, renderFlipNotePreview, parseFlipNoteConfig } from './flipNote/index.js';
 
 export function compositeFrame(
   base: Frame,

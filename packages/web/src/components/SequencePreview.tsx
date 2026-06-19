@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Frame } from '@pixopen/core';
 import { PixelPreview } from './PixelPreview';
+import { Icon, icons } from './icons';
 
 type Props = {
   frames: Frame[];
@@ -8,6 +9,7 @@ type Props = {
   loop: boolean;
   scale?: number;
   compact?: boolean;
+  hideDisplay?: boolean;
   livePixels?: number[] | null;
   liveActive?: boolean;
   editorFrameIndex?: number;
@@ -20,6 +22,7 @@ export function SequencePreview({
   loop,
   scale,
   compact = false,
+  hideDisplay = false,
   livePixels = null,
   liveActive = false,
   editorFrameIndex,
@@ -80,24 +83,27 @@ export function SequencePreview({
   const previewScale = scale ?? (compact ? 3 : 4);
 
   return (
-    <div className={`sequence-preview${compact ? ' sequence-preview-compact' : ''}`}>
-      <div className="sequence-preview-display">
-        {showLive ? (
-          <PixelPreview frame={null} pixels={livePixels} scale={previewScale} />
-        ) : (
-          <PixelPreview frame={currentFrame} scale={previewScale} />
-        )}
-        {showLive && <span className="badge badge-live sequence-live-badge">Live</span>}
-      </div>
+    <div className={`sequence-preview${compact ? ' sequence-preview-compact' : ''}${hideDisplay ? ' sequence-preview-controls-only' : ''}`}>
+      {!hideDisplay ? (
+        <div className="sequence-preview-display">
+          {showLive ? (
+            <PixelPreview frame={null} pixels={livePixels} scale={previewScale} />
+          ) : (
+            <PixelPreview frame={currentFrame} scale={previewScale} />
+          )}
+          {showLive && <span className="badge badge-live sequence-live-badge">Live</span>}
+        </div>
+      ) : null}
 
       {canAnimate && (
         <div className="sequence-controls">
           <div className="sequence-toolbar">
             <button
               type="button"
-              className="primary"
+              className="btn btn-primary btn-sm gap-1.5"
               onClick={() => setPlaying((p) => !p)}
             >
+              <Icon icon={playing ? icons.pause : icons.play} size={16} />
               {playing ? (compact ? 'Pause' : 'Pause playback') : (compact ? 'Play' : 'Play animation')}
             </button>
             {!compact && (
@@ -119,16 +125,17 @@ export function SequencePreview({
             )}
             {compact && (
               <>
-                <button type="button" onClick={() => { setPlaying(false); setPreviewIndex(index - 1); }} disabled={index <= 0} aria-label="Previous frame">
-                  ‹
+                <button type="button" className="btn btn-ghost btn-xs btn-square" onClick={() => { setPlaying(false); setPreviewIndex(index - 1); }} disabled={index <= 0} aria-label="Previous frame">
+                  <Icon icon={icons.arrowLeft} size={16} />
                 </button>
                 <button
                   type="button"
+                  className="btn btn-ghost btn-xs btn-square"
                   onClick={() => { setPlaying(false); setPreviewIndex(index + 1); }}
                   disabled={index >= frameCount - 1}
                   aria-label="Next frame"
                 >
-                  ›
+                  <Icon icon={icons.arrowRight} size={16} />
                 </button>
               </>
             )}

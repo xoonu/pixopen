@@ -2,7 +2,13 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CANVAS_SIZE, createEmptyFrame, type Frame } from '@pixopen/core';
+import {
+  CANVAS_SIZE,
+  DEFAULT_VIDEO_IMPORT_FPS,
+  DEFAULT_VIDEO_IMPORT_FRAMES,
+  MAX_VIDEO_IMPORT_FRAMES,
+  type Frame,
+} from '@pixopen/core';
 import { importStillImage } from './import.js';
 
 async function ffmpegPath(): Promise<string> {
@@ -19,8 +25,11 @@ export async function importVideo(
   file: Buffer,
   opts?: { maxFrames?: number; fps?: number },
 ): Promise<{ frames: Frame[]; delays: number[] }> {
-  const maxFrames = opts?.maxFrames ?? 24;
-  const fps = opts?.fps ?? 8;
+  const maxFrames = Math.min(
+    MAX_VIDEO_IMPORT_FRAMES,
+    Math.max(1, Math.round(opts?.maxFrames ?? DEFAULT_VIDEO_IMPORT_FRAMES)),
+  );
+  const fps = opts?.fps ?? DEFAULT_VIDEO_IMPORT_FPS;
   const delayMs = Math.round(1000 / fps);
   const dir = await mkdtemp(join(tmpdir(), 'pixopen-video-'));
   const input = join(dir, 'input.bin');

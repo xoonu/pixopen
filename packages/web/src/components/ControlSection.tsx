@@ -35,9 +35,9 @@ export function Field({
 }) {
   return (
     <div className={`field${inline ? ' field-inline' : ''}`}>
-      <label className="field-label" htmlFor={htmlFor}>{label}</label>
-      <div className="field-control">{children}</div>
-      {hint && <p className="field-hint muted">{hint}</p>}
+      <label className="field-label label-text" htmlFor={htmlFor}>{label}</label>
+      <div className="field-control w-full">{children}</div>
+      {hint && <p className="field-hint text-xs opacity-60">{hint}</p>}
     </div>
   );
 }
@@ -54,7 +54,7 @@ export function ToolButton({
   title?: string;
 }) {
   return (
-    <button type="button" className={active ? 'primary' : ''} onClick={onClick} title={title}>
+    <button type="button" className={`btn btn-sm btn-square${active ? ' btn-primary' : ' btn-ghost'}`} onClick={onClick} title={title}>
       {children}
     </button>
   );

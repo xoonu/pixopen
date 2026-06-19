@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { shouldUseVestaNoteUi } from '@pixopen/core';
+import { shouldUseFlipNoteUi } from '@pixopen/core';
 import { api } from '../../lib/api';
 import { Field } from '../ControlSection';
 import { SequencePreview } from '../SequencePreview';
-import { VestaNotePreview } from '../VestaNotePreview';
+import { FlipNotePreview } from '../FlipNotePreview';
 import { useStudio } from '../../studio/StudioProvider';
 
 type Props = {
@@ -28,7 +28,9 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
     setStatus,
     previewPixels,
     liveRuntimeActive,
+    liveRuntimeProjectId,
     runtimeError,
+    refreshRuntimeStatus,
     frameIndex,
     setFrameIndex,
   } = useStudio();
@@ -38,6 +40,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
   }
 
   const canSend = Boolean(deviceIp) && !nameConflict && Boolean(project.name.trim()) && !sending;
+  const isThisProjectLive = liveRuntimeActive && liveRuntimeProjectId === project.id && !runtimeError;
 
   const handleDeploy = async () => {
     if (!deviceIp) return setStatus('Select a Pixoo on the Devices tab');
@@ -47,8 +50,14 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
     setStatus('Saving and sending to Pixoo…');
     try {
       await save();
+      const wasLive = liveRuntimeActive && liveRuntimeProjectId === project.id;
       await api.projects.deploy(project.id, deviceIp);
-      setStatus(`Deployed "${project.name}" to ${deviceIp}`);
+      refreshRuntimeStatus();
+      setStatus(
+        wasLive
+          ? `Stopped live display and deployed "${project.name}" to ${deviceIp}`
+          : `Deployed "${project.name}" to ${deviceIp}`,
+      );
     } catch (e) {
       setStatus(e instanceof Error ? e.message : 'Deploy failed');
     } finally {
@@ -85,7 +94,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
     }
   };
 
-  const isVestaNote = shouldUseVestaNoteUi(project);
+  const isFlipNote = shouldUseFlipNoteUi(project);
 
   return (
     <div className="sidebar-panel-stack">
@@ -155,10 +164,10 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
           )}
         </div>
         <div className="sidebar-preview-wrap">
-          {isVestaNote ? (
-            <div className="sidebar-vesta-preview">
+          {isFlipNote ? (
+            <div className="sidebar-flip-note-preview">
               <span className="field-label">Preview</span>
-              <VestaNotePreview appConfig={project.appConfig} scale={3} playing />
+              <FlipNotePreview appConfig={project.appConfig} scale={3} playing />
             </div>
           ) : (
             <SequencePreview
@@ -167,7 +176,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
               frameDurationMs={project.frameDurationMs}
               loop={project.loop}
               livePixels={previewPixels}
-              liveActive={project.type === 'live-sign' && liveRuntimeActive}
+              liveActive={project.type === 'live-sign' && isThisProjectLive}
               editorFrameIndex={frameIndex}
               onFrameChange={setFrameIndex}
             />
@@ -178,7 +187,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
       {runtimeError ? (
         <p className="status-error sidebar-status">Pixoo update failed: {runtimeError}</p>
       ) : null}
-      {liveRuntimeActive && !runtimeError && isVestaNote ? (
+      {isThisProjectLive && isFlipNote ? (
         <p className="sidebar-status muted">Live on Pixoo — animation is streaming to your device.</p>
       ) : null}
 

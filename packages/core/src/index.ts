@@ -1,5 +1,14 @@
 export const CANVAS_SIZE = 64;
 
+/** Default editor zoom — canvas display scale is relative to this level. */
+export const EDITOR_CANVAS_BASE_ZOOM = 8;
+export const EDITOR_CANVAS_DISPLAY_PX = CANVAS_SIZE * EDITOR_CANVAS_BASE_ZOOM;
+
+/** Max frames extracted from a video clip (Pixoo deploy limit is ~40). */
+export const MAX_VIDEO_IMPORT_FRAMES = 36;
+export const DEFAULT_VIDEO_IMPORT_FRAMES = 24;
+export const DEFAULT_VIDEO_IMPORT_FPS = 8;
+
 export type Rect = { x: number; y: number; w: number; h: number };
 
 export type Rgba = [number, number, number, number];
@@ -23,12 +32,12 @@ export type LiveArea = {
 
 import {
   DEFAULT_IMAGE_FRAME_CONFIG,
-  DEFAULT_VESTA_NOTE_CONFIG,
+  DEFAULT_FLIP_NOTE_CONFIG,
   createDarkFramePixels,
   getAppTemplate,
   migrateProjectType,
-  normalizeVestaAppConfig,
-  shouldUseVestaNoteUi,
+  normalizeFlipNoteAppConfig,
+  shouldUseFlipNoteUi,
 } from './apps.js';
 
 export type ProjectType = 'image-frame' | 'animator' | 'live-sign';
@@ -39,7 +48,7 @@ export type Project = {
   type: ProjectType;
   /** Built-in or blank app template this project was created from */
   templateId: string | null;
-  /** App-specific settings (e.g. Vesta Note messages) */
+  /** App-specific settings (e.g. Flip Note messages) */
   appConfig: Record<string, unknown>;
   frames: Frame[];
   liveAreas: LiveArea[];
@@ -122,7 +131,7 @@ export function generateUniqueProjectName(existingNames: string[], base: string)
 
 export function defaultProjectName(type: ProjectType, existingNames: string[]): string {
   const base =
-    type === 'live-sign' ? 'Live Sign' : type === 'image-frame' ? 'Image Frame' : 'Animation';
+    type === 'live-sign' ? 'Live Frame' : type === 'image-frame' ? 'Image Frame' : 'Animation';
   return generateUniqueProjectName(existingNames, base);
 }
 
@@ -154,15 +163,16 @@ export function createProjectFromTemplate(
   name: string,
   existingNames: string[],
 ): Project {
-  const template = getAppTemplate(templateId);
+  const resolvedTemplateId = templateId === 'vesta-note' ? 'flip-note' : templateId;
+  const template = getAppTemplate(resolvedTemplateId);
   if (!template) throw new Error(`Unknown app template: ${templateId}`);
 
   const projectName = name.trim() || defaultProjectName(template.type, existingNames);
   const project = createProject(projectName, template.type);
-  project.templateId = templateId;
+  project.templateId = resolvedTemplateId;
 
-  if (templateId === 'vesta-note') {
-    project.appConfig = { ...DEFAULT_VESTA_NOTE_CONFIG };
+  if (resolvedTemplateId === 'flip-note') {
+    project.appConfig = { ...DEFAULT_FLIP_NOTE_CONFIG };
     project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
     project.liveAreas = [];
   } else if (template.type === 'image-frame') {
@@ -175,7 +185,7 @@ export function createProjectFromTemplate(
 export function normalizeProject(raw: Project): Project {
   const type = migrateProjectType(raw.type as string);
   const rawConfig = (raw.appConfig ?? {}) as Record<string, unknown>;
-  const useVesta = shouldUseVestaNoteUi({
+  const useFlipNote = shouldUseFlipNoteUi({
     templateId: raw.templateId,
     type: raw.type as string,
     name: raw.name,
@@ -185,9 +195,9 @@ export function normalizeProject(raw: Project): Project {
   let templateId = raw.templateId ?? null;
   let appConfig: Record<string, unknown> = rawConfig;
 
-  if (useVesta) {
-    templateId = 'vesta-note';
-    appConfig = normalizeVestaAppConfig(rawConfig);
+  if (useFlipNote) {
+    templateId = 'flip-note';
+    appConfig = { ...rawConfig, ...normalizeFlipNoteAppConfig(rawConfig) };
   } else if (!templateId) {
     templateId =
       type === 'image-frame' ? 'blank-image-frame' : type === 'live-sign' ? 'blank-live-sign' : 'blank-animator';
@@ -195,7 +205,7 @@ export function normalizeProject(raw: Project): Project {
   }
 
   let frames = raw.frames?.length ? raw.frames : [createEmptyFrame()];
-  if (useVesta && frames.length === 1 && isBlankFrame(frames[0])) {
+  if (useFlipNote && frames.length === 1 && isBlankFrame(frames[0])) {
     frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
   }
 
@@ -205,7 +215,7 @@ export function normalizeProject(raw: Project): Project {
     templateId,
     appConfig,
     frames,
-    liveAreas: useVesta ? [] : (raw.liveAreas ?? []),
+    liveAreas: useFlipNote ? [] : (raw.liveAreas ?? []),
   };
 }
 
