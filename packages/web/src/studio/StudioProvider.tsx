@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CANVAS_SIZE, createEmptyFrame, EDITOR_CANVAS_BASE_ZOOM, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseFlipNoteUi, type Frame, type Project, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, createEmptyFrame, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseFlipNoteUi, type Frame, type Project, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { cloneProject, useProjectHistory } from '../hooks/useProjectHistory';
+import { useToast } from '../components/Toast';
 
 export type StudioTool = 'pencil' | 'eraser' | 'fill' | 'live-area';
 
@@ -18,10 +19,7 @@ export type StudioEditorApi = {
   setTool: React.Dispatch<React.SetStateAction<StudioTool>>;
   color: string;
   setColor: React.Dispatch<React.SetStateAction<string>>;
-  editorZoom: number;
-  setEditorZoom: React.Dispatch<React.SetStateAction<number>>;
-  status: string;
-  setStatus: React.Dispatch<React.SetStateAction<string>>;
+  setStatus: (message: string) => void;
   previewPixels: number[] | null;
   /** True when the server has an active live runtime (any project). */
   liveRuntimeActive: boolean;
@@ -108,8 +106,14 @@ export function StudioProvider({
   const [frameIndex, setFrameIndex] = useState(0);
   const [tool, setTool] = useState<StudioTool>('pencil');
   const [color, setColor] = useState('#4f7cff');
-  const [editorZoom, setEditorZoom] = useState(EDITOR_CANVAS_BASE_ZOOM);
-  const [status, setStatus] = useState('');
+  const { pushToast } = useToast();
+  const setStatus = useCallback(
+    (message: string) => {
+      if (!message.trim()) return;
+      pushToast(message);
+    },
+    [pushToast],
+  );
   const [previewPixels, setPreviewPixels] = useState<number[] | null>(null);
   const [liveRuntimeActive, setLiveRuntimeActive] = useState(false);
   const [liveRuntimeProjectId, setLiveRuntimeProjectId] = useState<string | null>(null);
@@ -446,9 +450,6 @@ export function StudioProvider({
     setTool,
     color,
     setColor,
-    editorZoom,
-    setEditorZoom,
-    status,
     setStatus,
     previewPixels,
     liveRuntimeActive,
@@ -489,8 +490,8 @@ export function StudioProvider({
     drawing,
     cloneProject,
   }), [
-    project, projects, projectId, frameIndex, frameCount, currentFrame, tool, color, editorZoom, status,
-    previewPixels, liveRuntimeActive, liveRuntimeProjectId, runtimeError, refreshRuntimeStatus, datasources, liveDraft, liveRegionPreview, importImageFile, canUndo, canRedo,
+    project, projects, projectId, frameIndex, frameCount, currentFrame, tool, color, setStatus, previewPixels,
+    liveRuntimeActive, liveRuntimeProjectId, runtimeError, refreshRuntimeStatus, datasources, liveDraft, liveRegionPreview, importImageFile, canUndo, canRedo,
     handleUndo, handleRedo, save, nameConflict, projectTypeLabel, drawingTools, thumbs, updateFrame,
     applyProject, addBlankFrame, duplicateCurrentFrame, removeCurrentFrame, reorderFrame, getPos, floodFill, paint, commitStroke,
   ]);

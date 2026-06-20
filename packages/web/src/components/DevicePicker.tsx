@@ -3,6 +3,7 @@ import type { SavedDevice } from '@pixopen/core';
 import { api } from '../lib/api';
 import { Field } from './ControlSection';
 import { deviceDisplayLabel, deviceDisplayTitle } from '../lib/deviceLabel';
+import { useToast } from './Toast';
 
 function pickSingleDiscovered(devices: SavedDevice[], discovered: SavedDevice[]): SavedDevice | null {
   if (discovered.length !== 1) return null;
@@ -13,11 +14,11 @@ function pickSingleDiscovered(devices: SavedDevice[], discovered: SavedDevice[])
 type Props = {
   selectedIp: string;
   onSelect: (ip: string) => void;
-  onStatus?: (message: string) => void;
   idPrefix?: string;
 };
 
-export function DevicePicker({ selectedIp, onSelect, onStatus, idPrefix = 'device' }: Props) {
+export function DevicePicker({ selectedIp, onSelect, idPrefix = 'device' }: Props) {
+  const { pushToast } = useToast();
   const [devices, setDevices] = useState<SavedDevice[]>([]);
   const [manualIp, setManualIp] = useState('');
   const [busy, setBusy] = useState(false);
@@ -33,21 +34,21 @@ export function DevicePicker({ selectedIp, onSelect, onStatus, idPrefix = 'devic
 
   const discover = async () => {
     setBusy(true);
-    onStatus?.('Searching for Pixoo devices…');
+    pushToast('Searching for Pixoo devices…');
     try {
       const { devices, discovered } = await api.devices.discover();
       setDevices(devices);
       const single = pickSingleDiscovered(devices, discovered);
       if (single) {
         onSelect(single.ip);
-        onStatus?.(`Connected to ${deviceDisplayLabel(devices, single.ip)}`);
+        pushToast(`Connected to ${deviceDisplayLabel(devices, single.ip)}`);
       } else if (discovered.length === 0) {
-        onStatus?.('No Pixoo devices found on your network');
+        pushToast('No Pixoo devices found on your network');
       } else {
-        onStatus?.(`Found ${discovered.length} devices — select one below`);
+        pushToast(`Found ${discovered.length} devices — select one below`);
       }
     } catch (e) {
-      onStatus?.(e instanceof Error ? e.message : 'Search failed');
+      pushToast(e instanceof Error ? e.message : 'Search failed');
     } finally {
       setBusy(false);
     }
@@ -61,9 +62,9 @@ export function DevicePicker({ selectedIp, onSelect, onStatus, idPrefix = 'devic
       setDevices((prev) => [...prev, device]);
       onSelect(device.ip);
       setManualIp('');
-      onStatus?.(`Added ${device.ip}`);
+      pushToast(`Added ${device.ip}`);
     } catch (e) {
-      onStatus?.(e instanceof Error ? e.message : 'Add failed');
+      pushToast(e instanceof Error ? e.message : 'Add failed');
     } finally {
       setBusy(false);
     }

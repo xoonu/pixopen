@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_BASE_ZOOM, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { ControlSection, Field } from './ControlSection';
-import { EditorCanvasBar, EditorCanvasZoom } from './EditorToolbar';
+import { ScrollRegion } from './ScrollRegion';
+import { EditorCanvasBar } from './EditorToolbar';
 import { ImageImportModal } from './ImageImportModal';
 import { VideoImportModal } from './VideoImportModal';
 import { FlipNoteBoardPanel } from './FlipNoteBoardPanel';
@@ -29,8 +30,6 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
     setTool,
     color,
     setColor,
-    editorZoom,
-    setEditorZoom,
     canUndo,
     canRedo,
     handleUndo,
@@ -296,14 +295,6 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
                 <button type="button" onClick={() => openImageImport('slideshow-replace')}>
                   Replace current slide…
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm"
-                  disabled={frameCount <= 1}
-                  onClick={() => removeSlideAt(frameIndex)}
-                >
-                  Remove current slide
-                </button>
               </>
             )}
           </div>
@@ -343,7 +334,7 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
               </label>
               {playbackControls}
               {frameCount > 0 ? (
-                <div className="timeline">
+                <ScrollRegion orientation="horizontal" label="Slideshow slides" viewportClassName="timeline">
                   {thumbs.map((f, i) => (
                     <FrameThumb
                       key={i}
@@ -356,7 +347,7 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
                       removeLabel="Remove slide"
                     />
                   ))}
-                </div>
+                </ScrollRegion>
               ) : null}
             </>
           ) : null}
@@ -440,11 +431,11 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
             <span>Loop animation</span>
           </label>
           {playbackControls}
-          <div className="timeline">
+          <ScrollRegion orientation="horizontal" label="Animation frames" viewportClassName="timeline">
             {thumbs.map((f, i) => (
               <FrameThumb key={i} frame={f} index={i} active={i === frameIndex} onClick={() => setFrameIndex(i)} onReorder={reorderFrame} />
             ))}
-          </div>
+          </ScrollRegion>
         </ControlSection>
       ) : null}
 
@@ -499,34 +490,24 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
       </aside>
 
       <section
-        className={`studio-editor-panel${isLiveSign ? ' studio-editor-panel-live' : ''}`}
+        className={`studio-editor-panel${isLiveSign ? ' studio-editor-panel-live' : ''}${isImageFrame ? ' studio-editor-panel-image' : ''}`}
         aria-label="Canvas editor"
       >
         <div className={`studio-editor-workspace${isLiveSign ? ' studio-editor-workspace-live' : ''}`}>
           {showToolbar ? (
             <EditorCanvasBar
               layout={isLiveSign ? 'column' : 'row'}
-              showZoom={!isLiveSign}
               tools={drawingTools}
               activeTool={tool}
               onToolChange={setTool}
               color={color}
               onColorChange={setColor}
-              editorZoom={editorZoom}
-              onEditorZoomChange={setEditorZoom}
               canUndo={canUndo}
               canRedo={canRedo}
               onUndo={handleUndo}
               onRedo={handleRedo}
             />
-          ) : (
-            <EditorCanvasZoom
-              className="editor-canvas-zoom-standalone"
-              editorZoom={editorZoom}
-              onEditorZoomChange={setEditorZoom}
-              label="Preview zoom"
-            />
-          )}
+          ) : null}
 
           <div className={`studio-canvas-rail${isLiveSign ? ' studio-canvas-rail-live' : ''}`}>
             <div className="studio-canvas-stack">
@@ -540,7 +521,6 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
                     style={{
                       width: EDITOR_CANVAS_DISPLAY_PX,
                       height: EDITOR_CANVAS_DISPLAY_PX,
-                      transform: `scale(${editorZoom / EDITOR_CANVAS_BASE_ZOOM})`,
                     }}
                   onMouseDown={(e) => {
                     if (!showToolbar && !isImageFrame) return;
@@ -595,13 +575,6 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
                 {`Frame ${frameIndex + 1} of ${frameCount} · ${CANVAS_SIZE}×${CANVAS_SIZE} pixels`}
               </p>
             </div>
-            {isLiveSign && showToolbar ? (
-              <EditorCanvasZoom
-                orientation="vertical"
-                editorZoom={editorZoom}
-                onEditorZoomChange={setEditorZoom}
-              />
-            ) : null}
           </div>
         </div>
       </section>

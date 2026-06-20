@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AppTemplate, ProjectType } from '@pixopen/core';
 import { api } from '../lib/api';
 import { Icon, icons, type IconName } from './icons';
+import { ScrollRegion } from './ScrollRegion';
 
 type Props = {
   onCreated: (projectId: string) => void;
@@ -119,7 +120,12 @@ export function NewProjectModal({ onCreated, onClose }: Props) {
           </button>
         </div>
 
-        <div className="p-6 max-h-[min(60vh,520px)] overflow-y-auto grid gap-5">
+        <ScrollRegion
+          orientation="vertical"
+          label="Project templates"
+          className="max-h-[min(60vh,520px)]"
+          viewportClassName="p-6 grid gap-5"
+        >
           {examples.length > 0 ? (
             <section>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted mb-3">Example apps</h3>
@@ -133,7 +139,7 @@ export function NewProjectModal({ onCreated, onClose }: Props) {
           </section>
 
           {error ? <p className="status-error text-sm">{error}</p> : null}
-        </div>
+        </ScrollRegion>
       </div>
     </div>
   );

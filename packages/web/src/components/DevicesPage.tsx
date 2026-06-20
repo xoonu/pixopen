@@ -3,10 +3,11 @@ import type { SavedDevice } from '@pixopen/core';
 import { api } from '../lib/api';
 import { DevicePicker } from './DevicePicker';
 import { deviceDisplayLabel } from '../lib/deviceLabel';
+import { useToast } from './Toast';
 
 export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSelect: (ip: string) => void }) {
   const [devices, setDevices] = useState<SavedDevice[]>([]);
-  const [status, setStatus] = useState('');
+  const { pushToast } = useToast();
 
   const refresh = async () => {
     setDevices(await api.devices.list());
@@ -31,7 +32,6 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
               idPrefix="devices-page"
               selectedIp={selectedIp}
               onSelect={onSelect}
-              onStatus={setStatus}
             />
             {selectedIp ? (
               <button
@@ -39,20 +39,19 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
                 className="btn btn-outline btn-sm w-full mt-2"
                 onClick={async () => {
                   const label = deviceDisplayLabel(devices, selectedIp);
-                  setStatus(`Checking ${label}…`);
+                  pushToast(`Checking ${label}…`);
                   try {
                     const result = await api.devices.ping(selectedIp);
-                    if (result.ok) setStatus(`Connected to Pixoo at ${label}`);
-                    else setStatus(result.error);
+                    if (result.ok) pushToast(`Connected to Pixoo at ${label}`);
+                    else pushToast(result.error);
                   } catch (e) {
-                    setStatus(e instanceof Error ? e.message : 'Connection check failed');
+                    pushToast(e instanceof Error ? e.message : 'Connection check failed');
                   }
                 }}
               >
                 Test connection
               </button>
             ) : null}
-            {status ? <p className="text-sm text-muted mt-2">{status}</p> : null}
           </div>
         </section>
 
@@ -82,12 +81,12 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
                       type="button"
                       className="btn btn-ghost btn-sm rounded-none border-0 border-l border-border"
                       onClick={async () => {
-                        setStatus(`Sending test pattern to ${d.ip}…`);
+                        pushToast(`Sending test pattern to ${d.ip}…`);
                         try {
                           await api.devices.testPattern(d.ip);
-                          setStatus(`Test pattern displayed on ${d.ip}`);
+                          pushToast(`Test pattern displayed on ${d.ip}`);
                         } catch (e) {
-                          setStatus(e instanceof Error ? e.message : 'Test failed — check the IP and network');
+                          pushToast(e instanceof Error ? e.message : 'Test failed — check the IP and network');
                         }
                       }}
                     >

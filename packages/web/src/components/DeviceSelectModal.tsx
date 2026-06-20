@@ -10,8 +10,6 @@ type Props = {
   onConfirm: (ip: string) => void;
   onCancel: () => void;
   confirming?: boolean;
-  status?: string;
-  onStatus?: (message: string) => void;
 };
 
 export function DeviceSelectModal({
@@ -22,8 +20,6 @@ export function DeviceSelectModal({
   onConfirm,
   onCancel,
   confirming = false,
-  status,
-  onStatus,
 }: Props) {
   const [localIp, setLocalIp] = useState(selectedIp);
   const activeIp = localIp || selectedIp;
@@ -55,9 +51,7 @@ export function DeviceSelectModal({
           idPrefix="device-modal"
           selectedIp={activeIp}
           onSelect={handleSelect}
-          onStatus={onStatus}
         />
-        {status ? <p className="text-sm text-muted mt-2">{status}</p> : null}
         <div className="flex justify-end gap-2 mt-4">
           <button type="button" className="btn btn-ghost btn-sm" disabled={confirming} onClick={onCancel}>
             Cancel

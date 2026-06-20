@@ -11,6 +11,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { NewProjectModal } from './NewProjectModal';
 import { Icon, icons } from './icons';
 import { useRuntimeStatus } from '../hooks/useRuntimeStatus';
+import { useToast } from './Toast';
 
 const CANVAS_SIZE = 64;
 
@@ -67,14 +68,13 @@ type Props = {
 
 export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 0 }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [status, setStatus] = useState('');
-  const [modalStatus, setModalStatus] = useState('');
   const [pendingSend, setPendingSend] = useState<PendingSend | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
+  const { pushToast } = useToast();
   const { runtimeStatus, refreshRuntimeStatus } = useRuntimeStatus();
   const savedDevices = useSavedDevices(refreshKey);
 
@@ -101,18 +101,18 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
 
   const sendToPixoo = async (project: Project, ip: string, mode: 'deploy' | 'run') => {
     setSendingId(project.id);
-    setStatus(mode === 'run' ? `Starting live display…` : `Deploying…`);
+    pushToast(mode === 'run' ? 'Starting live display…' : 'Deploying…');
     try {
       if (mode === 'run') {
         await api.projects.run(project.id, ip);
-        setStatus(`Running on ${deviceDisplayLabel(savedDevices, ip)}`);
+        pushToast(`Running on ${deviceDisplayLabel(savedDevices, ip)}`);
       } else {
         await api.projects.deploy(project.id, ip);
-        setStatus(`Deployed to ${deviceDisplayLabel(savedDevices, ip)}`);
+        pushToast(`Deployed to ${deviceDisplayLabel(savedDevices, ip)}`);
       }
       refreshRuntimeStatus();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : mode === 'run' ? 'Run failed' : 'Deploy failed');
+      pushToast(e instanceof Error ? e.message : mode === 'run' ? 'Run failed' : 'Deploy failed');
       throw e;
     } finally {
       setSendingId(null);
@@ -122,7 +122,6 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
   const handleSendClick = (project: Project) => {
     const mode = sendModeFor(project);
     if (!deviceIp.trim()) {
-      setModalStatus('');
       setPendingSend({ project, mode });
       return;
     }
@@ -136,9 +135,8 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
     try {
       await sendToPixoo(pendingSend.project, ip, pendingSend.mode);
       setPendingSend(null);
-      setModalStatus('');
     } catch {
-      // status already set
+      // toast already shown
     }
   };
 
@@ -153,10 +151,10 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
     try {
       await api.projects.delete(pendingDelete.id);
       setProjects((prev) => prev.filter((p) => p.id !== pendingDelete.id));
-      setStatus(`Deleted "${pendingDelete.name}"`);
+      pushToast(`Deleted "${pendingDelete.name}"`);
       setPendingDelete(null);
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'Delete failed');
+      pushToast(e instanceof Error ? e.message : 'Delete failed');
     } finally {
       setDeleting(false);
     }
@@ -166,9 +164,9 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
     try {
       const copy = await api.projects.duplicate(project.id);
       setProjects((prev) => [copy, ...prev]);
-      setStatus(`Duplicated as "${copy.name}"`);
+      pushToast(`Duplicated as "${copy.name}"`);
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'Duplicate failed');
+      pushToast(e instanceof Error ? e.message : 'Duplicate failed');
     }
   };
 
@@ -208,8 +206,6 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
           New project
         </button>
       </header>
-
-      {status ? <p className="text-sm text-muted">{status}</p> : null}
 
       {projects.length === 0 ? (
         <div className="relative text-center py-16 px-6 rounded-2xl border border-dashed border-border bg-surface-2 overflow-hidden">
@@ -362,12 +358,9 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
           onCancel={() => {
             if (!sendingId) {
               setPendingSend(null);
-              setModalStatus('');
             }
           }}
           confirming={Boolean(sendingId)}
-          status={modalStatus}
-          onStatus={setModalStatus}
         />
       ) : null}
     </div>

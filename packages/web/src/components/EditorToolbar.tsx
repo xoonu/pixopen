@@ -116,39 +116,6 @@ export function ColorPicker({
   );
 }
 
-/** Canvas zoom control — horizontal in the toolbar, or vertical beside the canvas. */
-export function EditorCanvasZoom({
-  editorZoom,
-  onEditorZoomChange,
-  orientation = 'horizontal',
-  label = 'Zoom',
-  className = '',
-}: {
-  editorZoom: number;
-  onEditorZoomChange: (zoom: number) => void;
-  orientation?: 'horizontal' | 'vertical';
-  label?: string;
-  className?: string;
-}) {
-  return (
-    <label
-      className={`editor-canvas-zoom${orientation === 'vertical' ? ' editor-canvas-zoom-vertical' : ''}${className ? ` ${className}` : ''}`}
-    >
-      <span className="editor-canvas-zoom-label">{label}</span>
-      <input
-        type="range"
-        min={4}
-        max={12}
-        value={editorZoom}
-        onChange={(e) => onEditorZoomChange(Number(e.target.value))}
-        aria-orientation={orientation === 'vertical' ? 'vertical' : 'horizontal'}
-        aria-valuetext={`${editorZoom}×`}
-      />
-      <span className="editor-canvas-zoom-value">{editorZoom}×</span>
-    </label>
-  );
-}
-
 /** Tool strip beside or above the canvas. */
 export function EditorCanvasBar({
   tools,
@@ -156,28 +123,22 @@ export function EditorCanvasBar({
   onToolChange,
   color,
   onColorChange,
-  editorZoom,
-  onEditorZoomChange,
   canUndo,
   canRedo,
   onUndo,
   onRedo,
   layout = 'row',
-  showZoom = true,
 }: {
   tools: Tool[];
   activeTool: Tool;
   onToolChange: (tool: Tool) => void;
   color: string;
   onColorChange: (hex: string) => void;
-  editorZoom: number;
-  onEditorZoomChange: (zoom: number) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
   layout?: 'row' | 'column';
-  showZoom?: boolean;
 }) {
   const showColor = activeTool !== 'eraser' && activeTool !== 'live-area';
 
@@ -236,16 +197,6 @@ export function EditorCanvasBar({
         <>
           <span className="editor-canvas-bar-divider" aria-hidden="true" />
           <ColorPicker color={color} onChange={onColorChange} compact />
-        </>
-      ) : null}
-
-      {showZoom ? (
-        <>
-          <span className="editor-canvas-bar-divider editor-canvas-bar-divider-end" aria-hidden="true" />
-          <EditorCanvasZoom
-            editorZoom={editorZoom}
-            onEditorZoomChange={onEditorZoomChange}
-          />
         </>
       ) : null}
     </div>

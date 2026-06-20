@@ -11,10 +11,6 @@ type Props = {
   onProjectIdChange: (id: string | null) => void;
 };
 
-function isErrorStatus(status: string): boolean {
-  return /failed|error|timeout|not found|required|exists|unable|select a pixoo|fix the|no frames|can't reach|didn't respond|rejected/i.test(status);
-}
-
 export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
   const [sending, setSending] = useState(false);
   const {
@@ -24,7 +20,6 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
     save,
     nameConflict,
     projectTypeLabel,
-    status,
     setStatus,
     previewPixels,
     liveRuntimeActive,
@@ -189,12 +184,6 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
       ) : null}
       {isThisProjectLive && isFlipNote ? (
         <p className="sidebar-status muted">Live on Pixoo — animation is streaming to your device.</p>
-      ) : null}
-
-      {status ? (
-        <p className={isErrorStatus(status) ? 'status-error sidebar-status' : 'sidebar-status muted'}>
-          {status}
-        </p>
       ) : null}
     </div>
   );

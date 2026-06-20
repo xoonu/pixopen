@@ -10,15 +10,7 @@ type Props = {
   deviceIp: string;
 };
 
-function isErrorStatus(status: string): boolean {
-  return /failed|error|timeout|not found|required|exists|unable|select a pixoo|fix the|no frames|can't reach|didn't respond|rejected/i.test(status);
-}
-
-function isRedundantFlipNoteStatus(status: string): boolean {
-  return /^live on /i.test(status.trim()) || /^deployed to /i.test(status.trim());
-}
-
-/** Project controls, device target, playback preview, and status — lives in the studio sidebar. */
+/** Project controls and device target — lives in the studio sidebar. */
 export function StudioChrome({ deviceIp }: Props) {
   const [sending, setSending] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
@@ -30,7 +22,6 @@ export function StudioChrome({ deviceIp }: Props) {
     save,
     nameConflict,
     projectTypeLabel,
-    status,
     setStatus,
     liveRuntimeActive,
     liveRuntimeProjectId,
@@ -41,9 +32,10 @@ export function StudioChrome({ deviceIp }: Props) {
   if (!project) return null;
 
   const isFlipNote = shouldUseFlipNoteUi(project);
+  const isImageFrame = project.type === 'image-frame';
+  const hideTargetDevice = isFlipNote || isImageFrame;
   const canSend = Boolean(deviceIp) && !nameConflict && Boolean(project.name.trim()) && !sending;
   const isThisProjectLive = liveRuntimeActive && liveRuntimeProjectId === project.id && !runtimeError;
-  const showStatus = status && (!isFlipNote || isErrorStatus(status) || !isRedundantFlipNoteStatus(status));
 
   const handleDeploy = async () => {
     if (!deviceIp) return setStatus('Select a Pixoo on the Devices tab');
@@ -56,7 +48,9 @@ export function StudioChrome({ deviceIp }: Props) {
       const wasLive = liveRuntimeActive && liveRuntimeProjectId === project.id;
       await api.projects.deploy(project.id, deviceIp);
       refreshRuntimeStatus();
-      setStatus(wasLive ? `Stopped live display and deployed to ${deviceLabel}` : `Deployed to ${deviceLabel}`);
+      if (!hideTargetDevice) {
+        setStatus(wasLive ? `Stopped live display and deployed to ${deviceLabel}` : `Deployed to ${deviceLabel}`);
+      }
     } catch (e) {
       setStatus(e instanceof Error ? e.message : 'Deploy failed');
     } finally {
@@ -75,8 +69,6 @@ export function StudioChrome({ deviceIp }: Props) {
       await api.projects.run(project.id, deviceIp);
       if (!shouldUseFlipNoteUi(project)) {
         setStatus(`Live on ${deviceLabel}`);
-      } else {
-        setStatus('');
       }
     } catch (e) {
       setStatus(e instanceof Error ? e.message : 'Run failed');
@@ -124,31 +116,33 @@ export function StudioChrome({ deviceIp }: Props) {
       </div>
 
       <div className="studio-sidebar-section studio-sidebar-actions">
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm w-full"
-          disabled={!project.name.trim() || !!nameConflict || sending}
-          onClick={() => void save()}
-        >
-          Save
-        </button>
-        {project.type === 'live-sign' ? (
-          <>
-            <button type="button" className="btn btn-primary btn-sm w-full" disabled={!canSend} onClick={() => void handleRun()}>
+        <div className="studio-sidebar-action-row">
+          <button
+            type="button"
+            className="btn btn-outline btn-sm flex-1"
+            disabled={!project.name.trim() || !!nameConflict || sending}
+            onClick={() => void save()}
+          >
+            Save
+          </button>
+          {project.type === 'live-sign' ? (
+            <button type="button" className="btn btn-primary btn-sm flex-1" disabled={!canSend} onClick={() => void handleRun()}>
               {sending ? <span className="spinner" /> : 'Run on Pixoo'}
             </button>
-            <button type="button" className="btn btn-ghost btn-sm w-full" disabled={sending} onClick={() => void handleStop()}>
-              Stop
+          ) : (
+            <button type="button" className="btn btn-primary btn-sm flex-1" disabled={!canSend} onClick={() => void handleDeploy()}>
+              {sending ? <span className="spinner" /> : 'Deploy to Pixoo'}
             </button>
-          </>
-        ) : (
-          <button type="button" className="btn btn-primary btn-sm w-full" disabled={!canSend} onClick={() => void handleDeploy()}>
-            {sending ? <span className="spinner" /> : 'Deploy to Pixoo'}
+          )}
+        </div>
+        {project.type === 'live-sign' ? (
+          <button type="button" className="btn btn-ghost btn-sm w-full" disabled={sending} onClick={() => void handleStop()}>
+            Stop
           </button>
-        )}
+        ) : null}
       </div>
 
-      {!isFlipNote ? (
+      {!hideTargetDevice ? (
         <div className="studio-sidebar-section">
           <p className="field-label m-0">Target device</p>
           <p className="text-sm text-muted m-0 mt-1">
@@ -168,11 +162,6 @@ export function StudioChrome({ deviceIp }: Props) {
 
       {runtimeError ? (
         <p className="status-error text-sm m-0 studio-sidebar-status">Pixoo update failed: {runtimeError}</p>
-      ) : null}
-      {showStatus ? (
-        <p className={`text-sm m-0 studio-sidebar-status${isErrorStatus(status) ? ' status-error' : ' text-muted'}`}>
-          {status}
-        </p>
       ) : null}
     </div>
   );

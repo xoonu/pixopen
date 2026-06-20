@@ -2,16 +2,17 @@ import { useEffect, useState } from 'react';
 import { getAppTemplate, type AppTemplate } from '@pixopen/core';
 import { api } from '../../lib/api';
 import { Field } from '../ControlSection';
+import { useToast } from '../Toast';
 
 type Props = {
   onOpen: (projectId: string) => void;
-  onStatus?: (message: string) => void;
 };
 
-export function ProjectsSidebarPanel({ onOpen, onStatus }: Props) {
+export function ProjectsSidebarPanel({ onOpen }: Props) {
   const [templates, setTemplates] = useState<AppTemplate[]>([]);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
+  const { pushToast } = useToast();
 
   useEffect(() => {
     void api.apps.list().then(setTemplates);
@@ -25,10 +26,10 @@ export function ProjectsSidebarPanel({ onOpen, onStatus }: Props) {
     try {
       const project = await api.projects.createFromTemplate(templateId, newName);
       setNewName('');
-      onStatus?.(`Created "${project.name}"`);
+      pushToast(`Created "${project.name}"`);
       onOpen(project.id);
     } catch (e) {
-      onStatus?.(e instanceof Error ? e.message : 'Create failed');
+      pushToast(e instanceof Error ? e.message : 'Create failed');
     } finally {
       setBusy(false);
     }

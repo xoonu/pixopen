@@ -35,10 +35,11 @@ function configFrom(project: Project): FlipNoteConfig {
   return normalizeFlipNoteAppConfig(project.appConfig);
 }
 
+const FLIP_NOTE_PREVIEW_SCALE = 8;
+
 export function FlipNoteStudio({ project, onChange }: Props) {
   const config = configFrom(project);
   const [previewPlaying, setPreviewPlaying] = useState(true);
-  const [previewScale, setPreviewScale] = useState(8);
   const blocks = messagesToBlocks(config.messages, config.boardLines);
   const messageCount = blocks.length;
 
@@ -83,22 +84,12 @@ export function FlipNoteStudio({ project, onChange }: Props) {
             >
               {previewPlaying ? 'Pause' : 'Play'} animation
             </button>
-            <label className="flip-note-zoom-control">
-              <span className="muted">Zoom</span>
-              <input
-                type="range"
-                min={4}
-                max={12}
-                value={previewScale}
-                onChange={(e) => setPreviewScale(Number(e.target.value))}
-              />
-            </label>
           </div>
         </div>
         <div className="flip-note-preview-stage">
           <FlipNotePreview
             appConfig={project.appConfig}
-            scale={previewScale}
+            scale={FLIP_NOTE_PREVIEW_SCALE}
             playing={previewPlaying}
           />
         </div>

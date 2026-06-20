@@ -185,12 +185,43 @@
 
 .status-error { @apply text-error; }
 
+.toast-viewport {
+  @apply fixed top-4 left-1/2 z-50 grid w-full max-w-sm -translate-x-1/2 gap-2 px-4;
+}
+
+.toast {
+  @apply grid grid-cols-[1fr_auto] items-start gap-3 rounded-xl border bg-surface-2 px-4 py-3 shadow-xl shadow-black/30;
+}
+
+.toast-info {
+  @apply border-border;
+}
+
+.toast-success {
+  @apply border-success/40;
+}
+
+.toast-error {
+  @apply border-error/40;
+}
+
+.toast-message {
+  @apply m-0 text-sm leading-snug text-fg;
+}
+
+.toast-dismiss {
+  @apply inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-lg leading-none text-muted transition-colors;
+}
+
+.toast-dismiss:hover {
+  @apply bg-surface-3 text-fg;
+}
+
 /* ── Flip Note ── */
 .flip-note-studio { @apply grid max-w-3xl gap-5; }
 .flip-note-preview-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
 .flip-note-preview-toolbar { @apply flex flex-wrap items-center justify-between gap-3; }
 .flip-note-preview-controls { @apply flex flex-wrap items-center gap-3; }
-.flip-note-zoom-control { @apply flex items-center gap-2 text-sm text-muted; }
 .flip-note-preview-stage { @apply flex min-h-[120px] justify-center rounded-lg bg-surface-0 p-4; }
 .flip-note-preview-canvas { image-rendering: pixelated; @apply rounded border border-border; }
 .flip-note-appearance-grid { @apply grid gap-3; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
@@ -236,7 +267,11 @@
 }
 
 .studio-sidebar-actions {
-  @apply gap-1.5;
+  @apply grid gap-1.5;
+}
+
+.studio-sidebar-action-row {
+  @apply flex gap-2;
 }
 
 .studio-sidebar-title {
@@ -279,6 +314,23 @@
 }
 
 .studio-editor-panel-live .studio-canvas-meta {
+  @apply text-center;
+}
+
+.studio-editor-panel-image {
+  @apply justify-items-stretch;
+}
+
+.studio-editor-panel-image .studio-editor-workspace {
+  @apply justify-items-center;
+}
+
+.studio-editor-panel-image .studio-canvas-rail,
+.studio-editor-panel-image .studio-canvas-stack {
+  @apply mx-auto justify-items-center;
+}
+
+.studio-editor-panel-image .studio-canvas-meta {
   @apply text-center;
 }
 
@@ -356,40 +408,6 @@
   @apply grid w-fit max-w-full justify-items-end gap-2;
 }
 
-.editor-canvas-zoom {
-  @apply flex shrink-0 items-center gap-2 text-xs font-medium text-muted;
-}
-
-.editor-canvas-zoom input[type="range"] {
-  @apply h-1.5 w-24 cursor-pointer accent-brand;
-}
-
-.editor-canvas-zoom-vertical {
-  @apply flex-col justify-center self-stretch rounded-xl border border-border bg-surface-2 px-2 py-3;
-}
-
-.editor-canvas-zoom-vertical .editor-canvas-zoom-label {
-  @apply text-[0.65rem] uppercase tracking-wide;
-}
-
-.editor-canvas-zoom-vertical input[type="range"] {
-  @apply h-auto min-h-32 w-4 flex-1 cursor-pointer accent-brand;
-  writing-mode: vertical-lr;
-  direction: rtl;
-}
-
-.editor-canvas-zoom-vertical .editor-canvas-zoom-value {
-  @apply text-center;
-}
-
-.editor-canvas-zoom-value {
-  @apply min-w-8 text-right tabular-nums text-fg;
-}
-
-.editor-canvas-zoom-standalone {
-  @apply rounded-xl border border-border bg-surface-2 px-3 py-2;
-}
-
 .color-picker-swatch-only {
   @apply inline-flex;
 }
@@ -450,10 +468,90 @@
 .editor-canvas {
   image-rendering: pixelated;
   @apply block shrink-0 cursor-crosshair rounded-md border border-border-strong bg-black;
-  transform-origin: center center;
 }
 
-.timeline { @apply flex gap-1.5 overflow-x-auto py-2; }
+.timeline { @apply flex gap-1.5 py-2; }
+
+.scroll-region {
+  @apply grid min-h-0 min-w-0;
+}
+
+.scroll-region-horizontal {
+  grid-template-rows: auto auto;
+  @apply gap-1.5;
+}
+
+.scroll-region-vertical {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
+  @apply min-h-0 gap-1.5 overflow-hidden;
+}
+
+.scroll-region-viewport {
+  @apply min-h-0 min-w-0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroll-region-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-region-horizontal .scroll-region-viewport {
+  @apply overflow-x-auto overflow-y-hidden;
+}
+
+.scroll-region-vertical .scroll-region-viewport {
+  @apply overflow-y-auto overflow-x-hidden;
+}
+
+.scroll-region-scrollbar {
+  @apply flex shrink-0;
+}
+
+.scroll-region-horizontal .scroll-region-scrollbar {
+  @apply px-0.5 pb-0.5;
+}
+
+.scroll-region-vertical .scroll-region-scrollbar {
+  @apply self-stretch py-0.5 pr-0.5;
+}
+
+.scroll-region-track {
+  @apply relative rounded-full bg-surface-3 touch-none;
+}
+
+.scroll-region-horizontal .scroll-region-track {
+  @apply h-2.5 w-full;
+}
+
+.scroll-region-vertical .scroll-region-track {
+  @apply h-full w-2.5 min-h-0;
+}
+
+.scroll-region-thumb {
+  @apply absolute left-0 top-0 rounded-full bg-muted cursor-grab transition-colors;
+}
+
+.scroll-region-horizontal .scroll-region-thumb {
+  @apply h-full;
+}
+
+.scroll-region-vertical .scroll-region-thumb {
+  @apply w-full;
+}
+
+.scroll-region-thumb:hover {
+  @apply bg-fg/70;
+}
+
+.scroll-region-thumb:focus-visible {
+  @apply outline-2 outline-offset-2 outline-brand;
+}
+
+.scroll-region-thumb.is-dragging {
+  @apply cursor-grabbing bg-brand;
+}
 .frame-thumb-wrap { @apply relative grid justify-items-center gap-0.5; }
 .frame-thumb-btn { @apply grid cursor-grab justify-items-center gap-0.5 border-0 bg-transparent p-0; }
 .frame-thumb-btn:active { @apply cursor-grabbing; }

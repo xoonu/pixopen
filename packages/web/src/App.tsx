@@ -4,6 +4,7 @@ import { ProjectsPage } from './components/ProjectsPage';
 import { StudioPage } from './components/StudioPage';
 import { AppNav, type Tab } from './components/AppNav';
 import { StudioProvider } from './studio/StudioProvider';
+import { ToastProvider } from './components/Toast';
 import { useSavedDevices } from './hooks/useSavedDevices';
 import { useAutoConnectDevice } from './hooks/useAutoConnectDevice';
 import { deviceDisplayLabel, deviceDisplayTitle } from './lib/deviceLabel';
@@ -31,6 +32,7 @@ export default function App() {
   };
 
   return (
+    <ToastProvider>
     <StudioProvider
       active={tab === 'studio'}
       projectId={activeProjectId}
@@ -78,5 +80,6 @@ export default function App() {
 
       </div>
     </StudioProvider>
+    </ToastProvider>
   );
 }
