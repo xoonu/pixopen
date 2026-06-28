@@ -224,6 +224,7 @@ function isBlankFrame(frame: Frame): boolean {
 }
 
 export * from './apps.js';
+export * from './videoCrop.js';
 
 export function clampRect(rect: Rect): Rect {
   const x = Math.max(0, Math.min(63, rect.x));

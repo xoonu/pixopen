@@ -312,7 +312,22 @@ export function createApp(options?: { webDist?: string }) {
         maxFramesRaw != null && String(maxFramesRaw).trim() !== ''
           ? Number(maxFramesRaw)
           : undefined;
-      const { frames, delays } = await importVideo(buffer, { maxFrames });
+      const startSecRaw = body['startSec'];
+      const startSec =
+        startSecRaw != null && String(startSecRaw).trim() !== ''
+          ? Number(startSecRaw)
+          : undefined;
+      const focusXRaw = body['focusX'];
+      const focusX =
+        focusXRaw != null && String(focusXRaw).trim() !== ''
+          ? Number(focusXRaw)
+          : undefined;
+      const focusYRaw = body['focusY'];
+      const focusY =
+        focusYRaw != null && String(focusYRaw).trim() !== ''
+          ? Number(focusYRaw)
+          : undefined;
+      const { frames, delays } = await importVideo(buffer, { maxFrames, startSec, focusX, focusY });
       return c.json({ frames, delays });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Video import failed';

@@ -102,10 +102,13 @@ export const api = {
       if (!res.ok) throw new Error('GIF import failed');
       return res.json() as Promise<{ frames: Frame[]; delays: number[] }>;
     },
-    video: async (file: File, opts?: { maxFrames?: number }) => {
+    video: async (file: File, opts?: { maxFrames?: number; startSec?: number; focusX?: number; focusY?: number }) => {
       const fd = new FormData();
       fd.append('file', file);
       if (opts?.maxFrames != null) fd.append('maxFrames', String(opts.maxFrames));
+      if (opts?.startSec != null) fd.append('startSec', String(opts.startSec));
+      if (opts?.focusX != null) fd.append('focusX', String(opts.focusX));
+      if (opts?.focusY != null) fd.append('focusY', String(opts.focusY));
       const res = await fetch('/api/import/video', { method: 'POST', body: fd });
       if (!res.ok) {
         const text = await res.text();

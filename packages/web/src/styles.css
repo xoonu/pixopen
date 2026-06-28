@@ -111,6 +111,33 @@
   .modal-panel-image-import {
     @apply w-[min(100%,52rem)] max-w-none p-5 md:p-6;
   }
+  .video-import-modal { @apply grid gap-4; }
+  .video-import-crop-wrap { @apply grid justify-items-center gap-2; }
+  .video-import-crop-stage {
+    @apply relative overflow-hidden rounded-lg border-2 border-brand bg-black touch-none select-none;
+    image-rendering: pixelated;
+  }
+  .video-import-crop-stage.is-draggable { @apply cursor-grab; }
+  .video-import-crop-stage.is-draggable:active { @apply cursor-grabbing; }
+  .video-import-crop-video {
+    @apply absolute left-0 top-0 max-w-none origin-top-left;
+    image-rendering: pixelated;
+  }
+  .video-import-crop-frame {
+    @apply pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)];
+  }
+  .video-import-timeline { @apply grid gap-1; }
+  .video-import-timeline-track {
+    @apply relative h-2 overflow-hidden rounded-full bg-surface-0;
+  }
+  .video-import-timeline-selection {
+    @apply absolute inset-y-0 rounded-full bg-accent/70;
+  }
+  .video-import-timeline-labels {
+    @apply flex justify-between text-xs tabular-nums text-muted;
+  }
+  .video-import-length { @apply grid gap-2; }
+  .video-import-hint { @apply m-0; }
   .confirm-modal {
     @apply max-w-md;
   }

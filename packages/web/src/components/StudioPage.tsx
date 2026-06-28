@@ -599,12 +599,17 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
           onCancel={() => {
             if (!videoImporting) setImportVideoFile(null);
           }}
-          onImport={(maxFrames) => {
+          onImport={({ maxFrames, startSec, focusX, focusY }) => {
             void (async () => {
               setVideoImporting(true);
               setStatus('Converting video to frames…');
               try {
-                const { frames, delays } = await api.import.video(importVideoFile, { maxFrames });
+                const { frames, delays } = await api.import.video(importVideoFile, {
+                  maxFrames,
+                  startSec,
+                  focusX,
+                  focusY,
+                });
                 applyProject(() => ({
                   ...project,
                   frames,

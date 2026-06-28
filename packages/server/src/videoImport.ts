@@ -3,7 +3,9 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  buildSquareCoverCropFilter,
   CANVAS_SIZE,
+  clampVideoCropFocus,
   DEFAULT_VIDEO_IMPORT_FPS,
   DEFAULT_VIDEO_IMPORT_FRAMES,
   MAX_VIDEO_IMPORT_FRAMES,
@@ -23,14 +25,18 @@ async function ffmpegPath(): Promise<string> {
 
 export async function importVideo(
   file: Buffer,
-  opts?: { maxFrames?: number; fps?: number },
+  opts?: { maxFrames?: number; fps?: number; startSec?: number; focusX?: number; focusY?: number },
 ): Promise<{ frames: Frame[]; delays: number[] }> {
   const maxFrames = Math.min(
     MAX_VIDEO_IMPORT_FRAMES,
     Math.max(1, Math.round(opts?.maxFrames ?? DEFAULT_VIDEO_IMPORT_FRAMES)),
   );
   const fps = opts?.fps ?? DEFAULT_VIDEO_IMPORT_FPS;
+  const startSec = Math.max(0, opts?.startSec ?? 0);
+  const durationSec = maxFrames / fps;
   const delayMs = Math.round(1000 / fps);
+  const focus = clampVideoCropFocus(opts?.focusX ?? 0.5, opts?.focusY ?? 0.5);
+  const vf = buildSquareCoverCropFilter(CANVAS_SIZE, focus, fps);
   const dir = await mkdtemp(join(tmpdir(), 'pixopen-video-'));
   const input = join(dir, 'input.bin');
   const outPattern = join(dir, 'frame_%03d.png');
@@ -43,8 +49,12 @@ export async function importVideo(
         '-y',
         '-i',
         input,
+        '-ss',
+        String(startSec),
+        '-t',
+        String(durationSec),
         '-vf',
-        `fps=${fps},scale=${CANVAS_SIZE}:${CANVAS_SIZE}:flags=neighbor`,
+        vf,
         '-frames:v',
         String(maxFrames),
         outPattern,
