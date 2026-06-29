@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Frame, Project } from '@pixopen/core';
-import { getAppTemplate, shouldUseFlipNoteUi } from '@pixopen/core';
+import { getAppTemplate, shouldUseFlipNoteUi, shouldUseStockTickerUi } from '@pixopen/core';
 import { api } from '../lib/api';
 import { renderProjectCardPreview } from '../lib/projectCardPreview';
 import { projectTypeBadgeClass, projectTypeBadgeLabel } from '../lib/projectBadges';
@@ -220,7 +220,7 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
             New project
           </button>
           <p className="relative text-sm text-muted mt-3 max-w-md mx-auto">
-            Choose Image Frame, Animator, Live Frame, or Flip Note to get started.
+            Choose Image Frame, Animator, Flip Note, or Stock Ticker to get started.
           </p>
         </div>
       ) : (
@@ -295,7 +295,7 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
 
                   <p className="text-xs text-muted">
                     {project.frames.length} frame{project.frames.length === 1 ? '' : 's'}
-                    {project.type === 'live-sign' && !shouldUseFlipNoteUi(project)
+                    {project.type === 'live-sign' && !shouldUseFlipNoteUi(project) && !shouldUseStockTickerUi(project)
                       ? ` · ${project.liveAreas.length} region${project.liveAreas.length === 1 ? '' : 's'}`
                       : ''}
                     · Updated {formatRelativeDate(project.updatedAt)}

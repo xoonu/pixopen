@@ -136,13 +136,13 @@ export const GLYPHS: Record<string, DotGlyph> = {
     [X, X, X, X],
   ]),
 
-  M: g(7, [
-    [X, X, _, _, _, X, X],
-    [X, X, _, X, _, X, X],
-    [X, X, X, X, X, X, X],
-    [X, X, _, X, _, X, X],
-    [X, X, _, _, _, X, X],
-    [X, X, _, _, _, X, X],
+  M: g(6, [
+    [X, X, _, _, _, X],
+    [X, X, X, _, X, X],
+    [X, X, X, X, X, X],
+    [X, X, _, X, _, X],
+    [X, X, _, _, _, X],
+    [X, X, _, _, _, X],
   ]),
 
   N: g(5, [

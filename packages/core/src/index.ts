@@ -33,11 +33,14 @@ export type LiveArea = {
 import {
   DEFAULT_IMAGE_FRAME_CONFIG,
   DEFAULT_FLIP_NOTE_CONFIG,
+  DEFAULT_STOCK_TICKER_CONFIG,
   createDarkFramePixels,
   getAppTemplate,
   migrateProjectType,
   normalizeFlipNoteAppConfig,
+  normalizeStockTickerAppConfig,
   shouldUseFlipNoteUi,
+  shouldUseStockTickerUi,
 } from './apps.js';
 
 export type ProjectType = 'image-frame' | 'animator' | 'live-sign';
@@ -141,7 +144,7 @@ export function createProject(name: string, type: ProjectType = 'animator'): Pro
     type === 'image-frame'
       ? 'blank-image-frame'
       : type === 'live-sign'
-        ? 'blank-live-sign'
+        ? 'flip-note'
         : 'blank-animator';
   return {
     id: crypto.randomUUID(),
@@ -175,6 +178,10 @@ export function createProjectFromTemplate(
     project.appConfig = { ...DEFAULT_FLIP_NOTE_CONFIG };
     project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
     project.liveAreas = [];
+  } else if (resolvedTemplateId === 'stock-ticker') {
+    project.appConfig = { ...DEFAULT_STOCK_TICKER_CONFIG };
+    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
+    project.liveAreas = [];
   } else if (template.type === 'image-frame') {
     project.appConfig = { ...DEFAULT_IMAGE_FRAME_CONFIG };
   }
@@ -185,7 +192,11 @@ export function createProjectFromTemplate(
 export function normalizeProject(raw: Project): Project {
   const type = migrateProjectType(raw.type as string);
   const rawConfig = (raw.appConfig ?? {}) as Record<string, unknown>;
-  const useFlipNote = shouldUseFlipNoteUi({
+  const useStockTicker = shouldUseStockTickerUi({
+    templateId: raw.templateId,
+    appConfig: rawConfig,
+  });
+  const useFlipNote = !useStockTicker && shouldUseFlipNoteUi({
     templateId: raw.templateId,
     type: raw.type as string,
     name: raw.name,
@@ -195,17 +206,20 @@ export function normalizeProject(raw: Project): Project {
   let templateId = raw.templateId ?? null;
   let appConfig: Record<string, unknown> = rawConfig;
 
-  if (useFlipNote) {
+  if (useStockTicker) {
+    templateId = 'stock-ticker';
+    appConfig = { ...rawConfig, ...normalizeStockTickerAppConfig(rawConfig) };
+  } else if (useFlipNote) {
     templateId = 'flip-note';
     appConfig = { ...rawConfig, ...normalizeFlipNoteAppConfig(rawConfig) };
   } else if (!templateId) {
     templateId =
-      type === 'image-frame' ? 'blank-image-frame' : type === 'live-sign' ? 'blank-live-sign' : 'blank-animator';
+      type === 'image-frame' ? 'blank-image-frame' : type === 'live-sign' ? 'flip-note' : 'blank-animator';
     if (type === 'image-frame' && !rawConfig.mode) appConfig = { ...DEFAULT_IMAGE_FRAME_CONFIG };
   }
 
   let frames = raw.frames?.length ? raw.frames : [createEmptyFrame()];
-  if (useFlipNote && frames.length === 1 && isBlankFrame(frames[0])) {
+  if ((useFlipNote || useStockTicker) && frames.length === 1 && isBlankFrame(frames[0])) {
     frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
   }
 
@@ -215,7 +229,7 @@ export function normalizeProject(raw: Project): Project {
     templateId,
     appConfig,
     frames,
-    liveAreas: useFlipNote ? [] : (raw.liveAreas ?? []),
+    liveAreas: useFlipNote || useStockTicker ? [] : (raw.liveAreas ?? []),
   };
 }
 
@@ -224,6 +238,7 @@ function isBlankFrame(frame: Frame): boolean {
 }
 
 export * from './apps.js';
+export * from './stockTickerSparkline.js';
 export * from './videoCrop.js';
 
 export function clampRect(rect: Rect): Rect {

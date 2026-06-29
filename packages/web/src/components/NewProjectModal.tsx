@@ -11,9 +11,9 @@ type Props = {
 
 const TEMPLATE_ICON: Record<string, IconName> = {
   'flip-note': 'flipNote',
+  'stock-ticker': 'liveSign',
   'blank-image-frame': 'imageFrame',
   'blank-animator': 'animator',
-  'blank-live-sign': 'liveSign',
 };
 
 function templateIconName(template: AppTemplate): IconName {
@@ -128,7 +128,7 @@ export function NewProjectModal({ onCreated, onClose }: Props) {
         >
           {examples.length > 0 ? (
             <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted mb-3">Example apps</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted mb-3">Live Frames</h3>
               <div className="grid gap-2">{examples.map(renderCard)}</div>
             </section>
           ) : null}

@@ -115,6 +115,13 @@ export function renderWidgetIntoArea(
 }
 
 export { renderFlipNoteBoard, renderFlipNotePreview, parseFlipNoteConfig } from './flipNote/index.js';
+export {
+  renderStockTickerBoard,
+  renderStockTickerPreview,
+  parseStockTickerConfig,
+  demoQuotesForConfig,
+  listSymbolsPerPage,
+} from './stockTicker/index.js';
 
 export function compositeFrame(
   base: Frame,

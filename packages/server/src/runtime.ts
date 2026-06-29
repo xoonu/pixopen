@@ -1,9 +1,10 @@
-import { compositeFrame, parseFlipNoteConfig, renderFlipNoteBoard } from '@pixopen/renderer';
+import { compositeFrame, parseFlipNoteConfig, parseStockTickerConfig, renderFlipNoteBoard, renderStockTickerBoard } from '@pixopen/renderer';
 import { fetchDataSource, getDataSource } from '@pixopen/datasources';
 import { openPixooStream, type PixooStream } from '@pixopen/device';
 import type { DataSourceResult } from '@pixopen/datasources';
-import { normalizeProject, shouldUseFlipNoteUi, type Project } from '@pixopen/core';
+import { normalizeProject, shouldUseFlipNoteUi, shouldUseStockTickerUi, stockTickerQuoteSymbols, type Project, type StockQuoteSnapshot } from '@pixopen/core';
 import type { WebSocket } from 'ws';
+import { fetchStockQuotes } from './marketData/quotes.js';
 
 type RuntimeState = {
   project: Project;
@@ -17,11 +18,15 @@ type RuntimeState = {
   lastError: string | null;
   stream: PixooStream | null;
   pushInFlight: boolean;
+  quotes: StockQuoteSnapshot[];
+  quotesKey: string;
+  quotesFetchedAt: number;
 };
 
 /** Minimum ms between Pixoo pushes — preview can tick faster than this. */
 const FLIP_NOTE_DEVICE_PUSH_MS = 400;
 const LIVE_SIGN_DEVICE_PUSH_MS = 1000;
+const STOCK_QUOTE_REFRESH_MS = 30_000;
 
 let active: RuntimeState | null = null;
 const previewClients = new Set<WebSocket>();
@@ -67,11 +72,49 @@ export function syncRuntimeProject(project: Project) {
   if (!active || active.project.id !== project.id) return;
   active.project = normalizeProject(project);
   active.lastPushedPixels = null;
+  active.quotesKey = '';
 }
 
-function renderLiveFrame(project: Project, state: RuntimeState, values: Map<string, DataSourceResult>) {
+function isAnimatedLiveSign(project: Project): boolean {
+  return shouldUseFlipNoteUi(project) || shouldUseStockTickerUi(project);
+}
+
+async function refreshQuotesIfNeeded(state: RuntimeState): Promise<StockQuoteSnapshot[]> {
+  const config = parseStockTickerConfig(state.project.appConfig);
+  const key = JSON.stringify({
+    symbols: config.symbols.map((s) => s.symbol),
+    period: config.performancePeriod,
+    finnhubApiKey: config.finnhubApiKey ?? '',
+  });
+  const now = Date.now();
+  if (state.quotesKey === key && now - state.quotesFetchedAt < STOCK_QUOTE_REFRESH_MS && state.quotes.length > 0) {
+    return state.quotes;
+  }
+  const result = await fetchStockQuotes(
+    stockTickerQuoteSymbols(config.symbols),
+    config.performancePeriod,
+    config.finnhubApiKey,
+  );
+  state.quotes = result.quotes;
+  state.quotesKey = key;
+  state.quotesFetchedAt = now;
+  return result.quotes;
+}
+
+function renderLiveFrame(
+  project: Project,
+  state: RuntimeState,
+  values: Map<string, DataSourceResult>,
+  quotes: StockQuoteSnapshot[],
+) {
   const base = project.frames[0];
   if (!base) throw new Error('Project has no base frame');
+
+  if (shouldUseStockTickerUi(project)) {
+    const config = parseStockTickerConfig(project.appConfig);
+    const elapsedMs = Date.now() - state.startedAt;
+    return renderStockTickerBoard(config, quotes, elapsedMs);
+  }
 
   if (shouldUseFlipNoteUi(project)) {
     const config = parseFlipNoteConfig(project.appConfig);
@@ -91,7 +134,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
   const stream = await openPixooStream(deviceIp);
   const cache = new Map<string, { value: DataSourceResult; at: number }>();
   const normalized = normalizeProject(project);
-  const isFlipNote = shouldUseFlipNoteUi(normalized);
+  const animated = isAnimatedLiveSign(normalized);
 
   const state: RuntimeState = {
     project: normalized,
@@ -105,10 +148,13 @@ export async function startRuntime(project: Project, deviceIp: string) {
     lastError: null,
     stream,
     pushInFlight: false,
+    quotes: [],
+    quotesKey: '',
+    quotesFetchedAt: 0,
   };
   active = state;
 
-  const minDevicePushMs = isFlipNote ? FLIP_NOTE_DEVICE_PUSH_MS : LIVE_SIGN_DEVICE_PUSH_MS;
+  const minDevicePushMs = animated ? FLIP_NOTE_DEVICE_PUSH_MS : LIVE_SIGN_DEVICE_PUSH_MS;
 
   const tick = async () => {
     if (!active || !state.stream) return;
@@ -117,7 +163,11 @@ export async function startRuntime(project: Project, deviceIp: string) {
     try {
       const project = state.project;
       const values = new Map<string, DataSourceResult>();
-      if (!shouldUseFlipNoteUi(project)) {
+      let quotes: StockQuoteSnapshot[] = [];
+
+      if (shouldUseStockTickerUi(project)) {
+        quotes = await refreshQuotesIfNeeded(state);
+      } else if (!shouldUseFlipNoteUi(project)) {
         for (const area of project.liveAreas) {
           const adapter = getDataSource(area.datasourceId);
           if (!adapter) continue;
@@ -136,7 +186,8 @@ export async function startRuntime(project: Project, deviceIp: string) {
           }
         }
       }
-      const frame = renderLiveFrame(project, state, values);
+
+      const frame = renderLiveFrame(project, state, values, quotes);
       state.lastFrame = frame.pixels;
       broadcastPreview(frame.pixels);
 
@@ -160,6 +211,6 @@ export async function startRuntime(project: Project, deviceIp: string) {
   };
 
   await tick();
-  const intervalMs = isFlipNote ? 120 : 1000;
+  const intervalMs = animated ? 120 : 1000;
   state.interval = setInterval(tick, intervalMs);
 }

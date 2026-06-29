@@ -38,6 +38,7 @@ import {
   saveProject,
 } from './storage.js';
 import { getRuntimeStatus, startRuntime, stopRuntime, syncRuntimeProject } from './runtime.js';
+import { fetchStockQuotes, marketDataStatus } from './marketData/quotes.js';
 
 export function createApp(options?: { webDist?: string }) {
   const app = new Hono();
@@ -257,6 +258,28 @@ export function createApp(options?: { webDist?: string }) {
   });
 
   app.get('/api/runtime/status', (c) => c.json(getRuntimeStatus()));
+
+  app.get('/api/market/status', (c) => {
+    const finnhubApiKey = c.req.query('finnhubApiKey')?.trim() || undefined;
+    return c.json(marketDataStatus(finnhubApiKey));
+  });
+
+  app.post('/api/market/quotes', async (c) => {
+    const body = await c.req.json<{ symbols?: string[]; period?: string; finnhubApiKey?: string }>();
+    const symbols = Array.isArray(body.symbols) ? body.symbols : [];
+    const finnhubApiKey = typeof body.finnhubApiKey === 'string' ? body.finnhubApiKey.trim() : undefined;
+    const periodRaw = String(body.period ?? '1d');
+    const period =
+      periodRaw === '1w' || periodRaw === '1m' || periodRaw === 'ytd' ? periodRaw : ('1d' as const);
+    if (symbols.length === 0) return c.json({ quotes: [], ...marketDataStatus(finnhubApiKey), errors: [] });
+    try {
+      const result = await fetchStockQuotes(symbols, period, finnhubApiKey);
+      return c.json(result);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Quote fetch failed';
+      return c.json({ error: message }, 502);
+    }
+  });
 
   app.post('/api/runtime/sync', async (c) => {
     const body = await c.req.json<{ projectId: string; appConfig: Record<string, unknown> }>();

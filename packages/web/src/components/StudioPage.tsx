@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, shouldUseStockTickerUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { ControlSection, Field } from './ControlSection';
 import { ScrollRegion } from './ScrollRegion';
@@ -8,6 +8,8 @@ import { ImageImportModal } from './ImageImportModal';
 import { VideoImportModal } from './VideoImportModal';
 import { FlipNoteBoardPanel } from './FlipNoteBoardPanel';
 import { FlipNoteStudio } from './FlipNoteStudio';
+import { StockTickerPanel } from './StockTickerPanel';
+import { StockTickerStudio } from './StockTickerStudio';
 import { StudioChrome } from './StudioChrome';
 import { SequencePreview } from './SequencePreview';
 import { frameToImageData, useStudio } from '../studio/StudioProvider';
@@ -83,7 +85,7 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
     if (liveSyncTimer.current) clearTimeout(liveSyncTimer.current);
   }, []);
 
-  const syncFlipNoteToRuntime = (projectId: string, appConfig: Record<string, unknown>) => {
+  const syncLiveSignToRuntime = (projectId: string, appConfig: Record<string, unknown>) => {
     if (!liveRuntimeActive || liveRuntimeProjectId !== projectId) return;
     if (liveSyncTimer.current) clearTimeout(liveSyncTimer.current);
     liveSyncTimer.current = setTimeout(() => {
@@ -105,9 +107,10 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
   }
 
   const isFlipNote = shouldUseFlipNoteUi(project);
+  const isStockTicker = shouldUseStockTickerUi(project);
   const isImageFrame = project.type === 'image-frame';
   const isAnimator = project.type === 'animator';
-  const isLiveSign = project.type === 'live-sign' && !isFlipNote;
+  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker;
   const showToolbar = drawingTools.length > 0;
   const imageMode = String(project.appConfig?.mode ?? 'slideshow') as 'single' | 'slideshow';
 
@@ -126,7 +129,7 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
   if (isFlipNote) {
     const handleFlipNoteChange = (appConfig: Record<string, unknown>) => {
       setProject((prev) => (prev ? { ...prev, appConfig: { ...prev.appConfig, ...appConfig } } : prev));
-      syncFlipNoteToRuntime(project.id, appConfig);
+      syncLiveSignToRuntime(project.id, appConfig);
     };
 
     return (
@@ -137,6 +140,25 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
         </aside>
         <main className="studio-main-panel min-w-0">
           <FlipNoteStudio project={project} onChange={handleFlipNoteChange} />
+        </main>
+      </div>
+    );
+  }
+
+  if (isStockTicker) {
+    const handleStockTickerChange = (appConfig: Record<string, unknown>) => {
+      setProject((prev) => (prev ? { ...prev, appConfig: { ...prev.appConfig, ...appConfig } } : prev));
+      syncLiveSignToRuntime(project.id, appConfig);
+    };
+
+    return (
+      <div className="studio-page studio-workspace-layout">
+        <aside className="studio-sidebar" aria-label="Project sidebar">
+          <StudioChrome deviceIp={deviceIp} />
+          <StockTickerPanel project={project} onChange={handleStockTickerChange} />
+        </aside>
+        <main className="studio-main-panel min-w-0">
+          <StockTickerStudio project={project} onChange={handleStockTickerChange} />
         </main>
       </div>
     );

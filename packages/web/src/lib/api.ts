@@ -1,4 +1,4 @@
-import type { AppTemplate, DataSourceMeta, Frame, Project, SavedDevice } from '@pixopen/core';
+import type { AppTemplate, DataSourceMeta, Frame, Project, SavedDevice, StockQuoteSnapshot, StockTickerPerformancePeriod } from '@pixopen/core';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -135,6 +135,25 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, appConfig }),
+      }),
+  },
+  market: {
+    status: () =>
+      request<{ provider: 'finnhub' | 'demo'; configured: boolean }>('/api/market/status'),
+    quotes: (symbols: string[], period: StockTickerPerformancePeriod = '1d', finnhubApiKey?: string) =>
+      request<{
+        quotes: StockQuoteSnapshot[];
+        provider: 'finnhub' | 'demo';
+        configured: boolean;
+        errors: string[];
+      }>('/api/market/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbols,
+          period,
+          ...(finnhubApiKey ? { finnhubApiKey } : {}),
+        }),
       }),
   },
 };

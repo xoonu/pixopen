@@ -1,6 +1,13 @@
-import { shouldUseFlipNoteUi, type Frame, type LiveArea, type Project } from '@pixopen/core';
+import { shouldUseFlipNoteUi, shouldUseStockTickerUi, type Frame, type LiveArea, type Project } from '@pixopen/core';
 import type { DataSourceResult } from '@pixopen/datasources';
-import { compositeFrame, parseFlipNoteConfig, renderFlipNotePreview } from '@pixopen/renderer';
+import {
+  compositeFrame,
+  demoQuotesForConfig,
+  parseFlipNoteConfig,
+  parseStockTickerConfig,
+  renderFlipNotePreview,
+  renderStockTickerPreview,
+} from '@pixopen/renderer';
 
 function clockPreviewText(config: Record<string, unknown>): string {
   const now = new Date();
@@ -49,6 +56,12 @@ export function renderProjectCardPreview(project: Project): Frame {
   if (shouldUseFlipNoteUi(project)) {
     const config = parseFlipNoteConfig(project.appConfig);
     return renderFlipNotePreview(config, 0);
+  }
+
+  if (shouldUseStockTickerUi(project)) {
+    const config = parseStockTickerConfig(project.appConfig);
+    const quotes = demoQuotesForConfig(config);
+    return renderStockTickerPreview(config, quotes, 0);
   }
 
   if (project.type === 'live-sign') {

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { shouldUseFlipNoteUi } from '@pixopen/core';
+import { shouldUseFlipNoteUi, shouldUseStockTickerUi } from '@pixopen/core';
 import { api } from '../../lib/api';
 import { Field } from '../ControlSection';
 import { SequencePreview } from '../SequencePreview';
 import { FlipNotePreview } from '../FlipNotePreview';
+import { StockTickerPreview } from '../StockTickerPreview';
 import { useStudio } from '../../studio/StudioProvider';
 
 type Props = {
@@ -90,6 +91,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
   };
 
   const isFlipNote = shouldUseFlipNoteUi(project);
+  const isStockTicker = shouldUseStockTickerUi(project);
 
   return (
     <div className="sidebar-panel-stack">
@@ -164,6 +166,11 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
               <span className="field-label">Preview</span>
               <FlipNotePreview appConfig={project.appConfig} scale={3} playing />
             </div>
+          ) : isStockTicker ? (
+            <div className="sidebar-stock-ticker-preview">
+              <span className="field-label">Preview</span>
+              <StockTickerPreview appConfig={project.appConfig} scale={3} playing />
+            </div>
           ) : (
             <SequencePreview
               compact
@@ -182,7 +189,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
       {runtimeError ? (
         <p className="status-error sidebar-status">Pixoo update failed: {runtimeError}</p>
       ) : null}
-      {isThisProjectLive && isFlipNote ? (
+      {isThisProjectLive && (isFlipNote || isStockTicker) ? (
         <p className="sidebar-status muted">Live on Pixoo — animation is streaming to your device.</p>
       ) : null}
     </div>
