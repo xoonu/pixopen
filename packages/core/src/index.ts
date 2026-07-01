@@ -35,15 +35,19 @@ import {
   DEFAULT_FLIP_NOTE_CONFIG,
   DEFAULT_STOCK_TICKER_CONFIG,
   DEFAULT_WEATHER_FRAME_CONFIG,
+  DEFAULT_DVD_SCREENSAVER_CONFIG,
   createDarkFramePixels,
+  createBlackFramePixels,
   getAppTemplate,
   migrateProjectType,
   normalizeFlipNoteAppConfig,
   normalizeStockTickerAppConfig,
   normalizeWeatherFrameAppConfig,
+  normalizeDvdScreensaverAppConfig,
   shouldUseFlipNoteUi,
   shouldUseStockTickerUi,
   shouldUseWeatherUi,
+  shouldUseDvdScreensaverUi,
 } from './apps.js';
 
 export type ProjectType = 'image-frame' | 'animator' | 'live-sign';
@@ -189,6 +193,10 @@ export function createProjectFromTemplate(
     project.appConfig = { ...DEFAULT_WEATHER_FRAME_CONFIG };
     project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
     project.liveAreas = [];
+  } else if (resolvedTemplateId === 'dvd-screensaver') {
+    project.appConfig = { ...DEFAULT_DVD_SCREENSAVER_CONFIG };
+    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createBlackFramePixels() }];
+    project.liveAreas = [];
   } else if (template.type === 'image-frame') {
     project.appConfig = { ...DEFAULT_IMAGE_FRAME_CONFIG };
   }
@@ -207,7 +215,10 @@ export function normalizeProject(raw: Project): Project {
     templateId: raw.templateId,
     appConfig: rawConfig,
   });
-  const useFlipNote = !useStockTicker && !useWeather && shouldUseFlipNoteUi({
+  const useDvd = !useStockTicker && !useWeather && shouldUseDvdScreensaverUi({
+    templateId: raw.templateId,
+  });
+  const useFlipNote = !useStockTicker && !useWeather && !useDvd && shouldUseFlipNoteUi({
     templateId: raw.templateId,
     type: raw.type as string,
     name: raw.name,
@@ -223,6 +234,9 @@ export function normalizeProject(raw: Project): Project {
   } else if (useWeather) {
     templateId = 'weather-frame';
     appConfig = { ...rawConfig, ...normalizeWeatherFrameAppConfig(rawConfig) };
+  } else if (useDvd) {
+    templateId = 'dvd-screensaver';
+    appConfig = { ...rawConfig, ...normalizeDvdScreensaverAppConfig(rawConfig) };
   } else if (useFlipNote) {
     templateId = 'flip-note';
     appConfig = { ...rawConfig, ...normalizeFlipNoteAppConfig(rawConfig) };
@@ -233,8 +247,12 @@ export function normalizeProject(raw: Project): Project {
   }
 
   let frames = raw.frames?.length ? raw.frames : [createEmptyFrame()];
-  if ((useFlipNote || useStockTicker || useWeather) && frames.length === 1 && isBlankFrame(frames[0])) {
-    frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
+  if ((useFlipNote || useStockTicker || useWeather || useDvd) && frames.length === 1 && isBlankFrame(frames[0])) {
+    frames = [{
+      width: CANVAS_SIZE,
+      height: CANVAS_SIZE,
+      pixels: useDvd ? createBlackFramePixels() : createDarkFramePixels(),
+    }];
   }
 
   return {
@@ -243,7 +261,7 @@ export function normalizeProject(raw: Project): Project {
     templateId,
     appConfig,
     frames,
-    liveAreas: useFlipNote || useStockTicker || useWeather ? [] : (raw.liveAreas ?? []),
+    liveAreas: useFlipNote || useStockTicker || useWeather || useDvd ? [] : (raw.liveAreas ?? []),
   };
 }
 

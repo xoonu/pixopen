@@ -152,6 +152,25 @@ export type WeatherSnapshot = {
   fetchedAt: string;
 };
 
+export type DvdCornerSensitivity = 1 | 4 | 10;
+
+export type DvdScreensaverConfig = {
+  speedPxPerSec: number;
+  /** 1 = crisp jumps, 10 = slower motion + motion trail for low device fps. */
+  smoothness: number;
+  logoScale: 1 | 2;
+  cornerSensitivity: DvdCornerSensitivity;
+  seed: number;
+};
+
+export const DEFAULT_DVD_SCREENSAVER_CONFIG: DvdScreensaverConfig = {
+  speedPxPerSec: 22,
+  smoothness: 7,
+  logoScale: 1,
+  cornerSensitivity: 4,
+  seed: 42_069,
+};
+
 export const MAX_STOCK_TICKER_SYMBOLS = 32;
 
 export const DEFAULT_STOCK_TICKER_SYMBOLS: StockTickerSymbol[] = [
@@ -268,6 +287,14 @@ export const APP_TEMPLATES: AppTemplate[] = [
     description: 'Live current weather for a location — temp, conditions, humidity, and wind.',
     icon: '🌤',
   },
+  {
+    id: 'dvd-screensaver',
+    name: 'DVD Screensaver',
+    type: 'live-sign',
+    category: 'example',
+    description: 'The classic bouncing DVD logo — angular paths, edge bounces, corner-hit drama.',
+    icon: '💿',
+  },
 ];
 
 export function getAppTemplate(id: string): AppTemplate | undefined {
@@ -319,6 +346,12 @@ export function shouldUseWeatherUi(project: {
   return hasWeatherLocation(project.appConfig);
 }
 
+export function shouldUseDvdScreensaverUi(project: {
+  templateId?: string | null;
+}): boolean {
+  return project.templateId === 'dvd-screensaver';
+}
+
 export function shouldUseFlipNoteUi(project: {
   templateId?: string | null;
   type?: string;
@@ -327,6 +360,7 @@ export function shouldUseFlipNoteUi(project: {
 }): boolean {
   if (shouldUseStockTickerUi(project)) return false;
   if (shouldUseWeatherUi(project)) return false;
+  if (shouldUseDvdScreensaverUi(project)) return false;
   if (project.templateId && LEGACY_FLIP_NOTE_TEMPLATE_IDS.has(project.templateId)) return true;
   if (Array.isArray(project.appConfig?.messages)) return true;
   const type = migrateProjectType(project.type ?? 'animator');
@@ -555,6 +589,34 @@ export function normalizeWeatherFrameAppConfig(
     theme,
     colors,
   };
+}
+
+export function normalizeDvdScreensaverAppConfig(
+  appConfig: Record<string, unknown> | undefined,
+): DvdScreensaverConfig {
+  const raw = appConfig ?? {};
+  const speedRaw = Number(raw.speedPxPerSec ?? DEFAULT_DVD_SCREENSAVER_CONFIG.speedPxPerSec);
+  const speedPxPerSec = Number.isFinite(speedRaw)
+    ? Math.max(8, Math.min(40, speedRaw))
+    : DEFAULT_DVD_SCREENSAVER_CONFIG.speedPxPerSec;
+  const smoothRaw = Number(raw.smoothness ?? DEFAULT_DVD_SCREENSAVER_CONFIG.smoothness);
+  const smoothness = Number.isFinite(smoothRaw)
+    ? Math.max(1, Math.min(10, Math.round(smoothRaw)))
+    : DEFAULT_DVD_SCREENSAVER_CONFIG.smoothness;
+  const scaleRaw = Number(raw.logoScale ?? DEFAULT_DVD_SCREENSAVER_CONFIG.logoScale);
+  const logoScale = scaleRaw === 2 ? 2 : 1;
+  const sensRaw = Number(raw.cornerSensitivity ?? DEFAULT_DVD_SCREENSAVER_CONFIG.cornerSensitivity);
+  const cornerSensitivity: DvdCornerSensitivity =
+    sensRaw === 1 || sensRaw === 10 ? sensRaw : 4;
+  const seedRaw = Number(raw.seed ?? DEFAULT_DVD_SCREENSAVER_CONFIG.seed);
+  const seed = Number.isFinite(seedRaw) ? Math.floor(seedRaw) : DEFAULT_DVD_SCREENSAVER_CONFIG.seed;
+  return { speedPxPerSec, smoothness, logoScale, cornerSensitivity, seed };
+}
+
+export function createBlackFramePixels(): number[] {
+  const pixels = new Array(64 * 64 * 4).fill(0);
+  for (let i = 3; i < pixels.length; i += 4) pixels[i] = 255;
+  return pixels;
 }
 
 export function createDarkFramePixels(): number[] {

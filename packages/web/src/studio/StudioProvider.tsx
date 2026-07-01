@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CANVAS_SIZE, createEmptyFrame, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, type Frame, type Project, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, createEmptyFrame, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, type Frame, type Project, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { cloneProject, useProjectHistory } from '../hooks/useProjectHistory';
 import { useToast } from '../components/Toast';
@@ -203,6 +203,7 @@ export function StudioProvider({
     if (project.templateId === 'flip-note' || shouldUseFlipNoteUi(project)) return;
     if (project.templateId === 'stock-ticker' || shouldUseStockTickerUi(project)) return;
     if (project.templateId === 'weather-frame' || shouldUseWeatherUi(project)) return;
+    if (project.templateId === 'dvd-screensaver' || shouldUseDvdScreensaverUi(project)) return;
 
     if (!currentFrame) return;
     ctx.putImageData(frameToImageData(currentFrame), 0, 0);
@@ -429,7 +430,7 @@ export function StudioProvider({
 
   const projectTypeLabel = project ? formatProjectTypeLabel(project.type) : '';
   const drawingTools = (() => {
-    if (!project || project.type === 'image-frame' || shouldUseFlipNoteUi(project) || shouldUseStockTickerUi(project) || shouldUseWeatherUi(project)) return [] as StudioTool[];
+    if (!project || project.type === 'image-frame' || shouldUseFlipNoteUi(project) || shouldUseStockTickerUi(project) || shouldUseWeatherUi(project) || shouldUseDvdScreensaverUi(project)) return [] as StudioTool[];
     if (project.type === 'live-sign') return ['pencil', 'eraser', 'fill', 'live-area'] as StudioTool[];
     return ['pencil', 'eraser', 'fill'] as StudioTool[];
   })();

@@ -9,7 +9,7 @@ Pixopen runs as a **local companion server** that proxies device communication (
 - Discover Pixoo-64 on your LAN (Divoom cloud) or add IP manually
 - 64×64 pixel editor with full-color pencil, eraser, fill
 - Import still images and animated GIFs (edit frame-by-frame)
-- **Live Frames** — prefab live apps (Flip Note, Stock Ticker, Weather) pushed to Pixoo with **Run**
+- **Live Frames** — prefab live apps (Flip Note, Stock Ticker, Weather, DVD Screensaver) pushed to Pixoo with **Run**
 - Deploy frame animations to your Pixoo
 
 ## Live Frames
@@ -19,6 +19,7 @@ In **New project**, choose **Live Frames**:
 - **Flip Note** — split-flap letter board with rotating messages
 - **Stock Ticker** — watchlist with rotate, dashboard, and paginated list layouts (3 symbols per page)
 - **Weather** — current conditions for a saved location (Open-Meteo, no API key)
+- **DVD Screensaver** — the classic bouncing DVD logo (for the memes)
 
 **Start from scratch** is for Image Frame and Animator only.
 

@@ -43,6 +43,8 @@ export const icons = {
   flipNote: Note01Icon,
   /** Project template: weather frame */
   weatherFrame: CloudIcon,
+  /** Project template: DVD screensaver */
+  dvdScreensaver: PlayIcon,
   /** Editor: pencil tool */
   pencil: PencilIcon,
   /** Editor: eraser tool */

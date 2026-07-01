@@ -318,6 +318,19 @@
 .weather-frame-color-picker-row input[type="color"] { @apply size-9 cursor-pointer rounded p-0.5; }
 .weather-frame-color-picker-row input[type="text"] { @apply flex-1 font-mono; }
 .sidebar-weather-frame-preview { @apply grid gap-2 justify-items-center; }
+.dvd-screensaver-studio { @apply grid max-w-3xl gap-5; }
+.dvd-screensaver-preview-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.dvd-screensaver-preview-stage { @apply flex min-h-[120px] justify-center rounded-lg bg-surface-0 p-4; }
+.dvd-screensaver-preview-canvas { image-rendering: pixelated; @apply rounded border border-border; }
+.dvd-screensaver-section-title { @apply text-sm font-semibold text-fg m-0; }
+.dvd-screensaver-controls-panel { @apply grid gap-3; }
+.dvd-screensaver-controls-grid { @apply grid gap-3; }
+.dvd-screensaver-stats-panel { @apply grid gap-2 rounded-xl border border-border bg-surface-2 p-4; }
+.dvd-screensaver-corner-row { @apply flex items-center justify-between gap-3; }
+.dvd-screensaver-corner-label { @apply text-sm m-0; }
+.dvd-screensaver-sidebar-panel { @apply grid gap-3 pt-4 mt-4 border-t border-border; }
+.dvd-screensaver-sidebar-preview { @apply flex justify-center rounded-lg bg-surface-0 p-3; }
+.sidebar-dvd-screensaver-preview { @apply grid gap-2 justify-items-center; }
 
 /* ── Studio workspace ── */
 .studio-page.studio-workspace-layout {

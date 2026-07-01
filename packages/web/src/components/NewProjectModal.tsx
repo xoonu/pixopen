@@ -13,6 +13,7 @@ const TEMPLATE_ICON: Record<string, IconName> = {
   'flip-note': 'flipNote',
   'stock-ticker': 'liveSign',
   'weather-frame': 'weatherFrame',
+  'dvd-screensaver': 'dvdScreensaver',
   'blank-image-frame': 'imageFrame',
   'blank-animator': 'animator',
 };

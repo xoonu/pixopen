@@ -1,8 +1,8 @@
-import { compositeFrame, parseFlipNoteConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderFlipNoteBoard, renderStockTickerBoard, renderWeatherBoard } from '@pixopen/renderer';
+import { compositeFrame, parseDvdScreensaverConfig, parseFlipNoteConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderDvdScreensaverBoard, renderFlipNoteBoard, renderStockTickerBoard, renderWeatherBoard } from '@pixopen/renderer';
 import { fetchDataSource, getDataSource } from '@pixopen/datasources';
 import { openPixooStream, type PixooStream } from '@pixopen/device';
 import type { DataSourceResult } from '@pixopen/datasources';
-import { normalizeProject, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type Project, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
+import { normalizeProject, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type Project, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
 import type { WebSocket } from 'ws';
 import { fetchStockQuotes } from './marketData/quotes.js';
 import { fetchWeatherSnapshot } from './weatherData/index.js';
@@ -10,7 +10,8 @@ import { fetchWeatherSnapshot } from './weatherData/index.js';
 type RuntimeState = {
   project: Project;
   deviceIp: string;
-  interval: ReturnType<typeof setInterval> | null;
+  /** setTimeout handle for the serialized tick loop */
+  interval: ReturnType<typeof setTimeout> | null;
   tick: number;
   startedAt: number;
   lastFrame: number[] | null;
@@ -19,6 +20,7 @@ type RuntimeState = {
   lastError: string | null;
   stream: PixooStream | null;
   pushInFlight: boolean;
+  tickInFlight: boolean;
   quotes: StockQuoteSnapshot[];
   quotesKey: string;
   quotesFetchedAt: number;
@@ -27,9 +29,13 @@ type RuntimeState = {
   weatherFetchedAt: number;
 };
 
-/** Minimum ms between Pixoo pushes — preview can tick faster than this. */
+/** Minimum ms between Pixoo pushes — faster rates crash/reboot the device. */
 const FLIP_NOTE_DEVICE_PUSH_MS = 400;
+/** DVD streams full-screen updates every tick — stay conservative. */
+const DVD_DEVICE_PUSH_MS = 500;
 const LIVE_SIGN_DEVICE_PUSH_MS = 1000;
+const ANIMATED_TICK_MS = 120;
+const DVD_TICK_MS = 500;
 const STOCK_QUOTE_REFRESH_MS = 30_000;
 const WEATHER_REFRESH_MS = 10 * 60_000;
 
@@ -68,7 +74,7 @@ function pixelsEqual(a: number[] | null, b: number[]): boolean {
 }
 
 export async function stopRuntime() {
-  if (active?.interval) clearInterval(active.interval);
+  if (active?.interval) clearTimeout(active.interval);
   active = null;
 }
 
@@ -82,7 +88,17 @@ export function syncRuntimeProject(project: Project) {
 }
 
 function isAnimatedLiveSign(project: Project): boolean {
-  return shouldUseFlipNoteUi(project) || shouldUseStockTickerUi(project) || shouldUseWeatherUi(project);
+  return shouldUseFlipNoteUi(project) || shouldUseStockTickerUi(project) || shouldUseWeatherUi(project) || shouldUseDvdScreensaverUi(project);
+}
+
+function runtimeTiming(project: Project): { tickMs: number; devicePushMs: number } {
+  if (shouldUseDvdScreensaverUi(project)) {
+    return { tickMs: DVD_TICK_MS, devicePushMs: DVD_DEVICE_PUSH_MS };
+  }
+  if (isAnimatedLiveSign(project)) {
+    return { tickMs: ANIMATED_TICK_MS, devicePushMs: FLIP_NOTE_DEVICE_PUSH_MS };
+  }
+  return { tickMs: 1000, devicePushMs: LIVE_SIGN_DEVICE_PUSH_MS };
 }
 
 async function refreshQuotesIfNeeded(state: RuntimeState): Promise<StockQuoteSnapshot[]> {
@@ -152,6 +168,12 @@ function renderLiveFrame(
     return renderWeatherBoard(config, weather, elapsedMs);
   }
 
+  if (shouldUseDvdScreensaverUi(project)) {
+    const config = parseDvdScreensaverConfig(project.appConfig);
+    const elapsedMs = Date.now() - state.startedAt;
+    return renderDvdScreensaverBoard(config, elapsedMs);
+  }
+
   if (shouldUseFlipNoteUi(project)) {
     const config = parseFlipNoteConfig(project.appConfig);
     const elapsedMs = Date.now() - state.startedAt;
@@ -170,7 +192,6 @@ export async function startRuntime(project: Project, deviceIp: string) {
   const stream = await openPixooStream(deviceIp);
   const cache = new Map<string, { value: DataSourceResult; at: number }>();
   const normalized = normalizeProject(project);
-  const animated = isAnimatedLiveSign(normalized);
 
   const state: RuntimeState = {
     project: normalized,
@@ -184,6 +205,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
     lastError: null,
     stream,
     pushInFlight: false,
+    tickInFlight: false,
     quotes: [],
     quotesKey: '',
     quotesFetchedAt: 0,
@@ -193,11 +215,32 @@ export async function startRuntime(project: Project, deviceIp: string) {
   };
   active = state;
 
-  const minDevicePushMs = animated ? FLIP_NOTE_DEVICE_PUSH_MS : LIVE_SIGN_DEVICE_PUSH_MS;
+  const { tickMs, devicePushMs: minDevicePushMs } = runtimeTiming(normalized);
+
+  const pushToDevice = async (pixels: number[]) => {
+    if (!state.stream || state.pushInFlight) return;
+    const now = Date.now();
+    const dueForPush = state.lastPushedPixels === null || now - state.lastDevicePushAt >= minDevicePushMs;
+    const frameChanged = !pixelsEqual(state.lastPushedPixels, pixels);
+    if (!dueForPush || !frameChanged) return;
+
+    state.pushInFlight = true;
+    try {
+      await state.stream.push({ width: 64, height: 64, pixels });
+      state.lastDevicePushAt = Date.now();
+      state.lastPushedPixels = pixels;
+      state.lastError = null;
+    } catch (err) {
+      state.lastError = err instanceof Error ? err.message : String(err);
+    } finally {
+      state.pushInFlight = false;
+    }
+  };
 
   const tick = async () => {
-    if (!active || !state.stream) return;
+    if (!active || !state.stream || state.tickInFlight) return;
 
+    state.tickInFlight = true;
     state.tick += 1;
     try {
       const project = state.project;
@@ -232,27 +275,23 @@ export async function startRuntime(project: Project, deviceIp: string) {
       const frame = renderLiveFrame(project, state, values, quotes, weather);
       state.lastFrame = frame.pixels;
       broadcastPreview(frame.pixels);
-
-      const now = Date.now();
-      const dueForPush = state.lastPushedPixels === null || now - state.lastDevicePushAt >= minDevicePushMs;
-      const frameChanged = !pixelsEqual(state.lastPushedPixels, frame.pixels);
-      if (state.pushInFlight || !dueForPush || !frameChanged) return;
-
-      state.pushInFlight = true;
-      try {
-        await state.stream.push(frame);
-        state.lastDevicePushAt = now;
-        state.lastPushedPixels = frame.pixels;
-        state.lastError = null;
-      } finally {
-        state.pushInFlight = false;
-      }
+      await pushToDevice(frame.pixels);
     } catch (err) {
       state.lastError = err instanceof Error ? err.message : String(err);
+    } finally {
+      state.tickInFlight = false;
     }
   };
 
+  const scheduleTick = () => {
+    if (!active || active !== state) return;
+    state.interval = setTimeout(() => {
+      void tick().finally(() => {
+        if (active === state) scheduleTick();
+      });
+    }, tickMs);
+  };
+
   await tick();
-  const intervalMs = animated ? 120 : 1000;
-  state.interval = setInterval(tick, intervalMs);
+  scheduleTick();
 }

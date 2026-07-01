@@ -52,6 +52,13 @@ async function prepareCustomDisplay(ip: string): Promise<PixooClient> {
   return client;
 }
 
+/** Pixoo reboots if SendHttpGif frames arrive too quickly — do not lower. */
+const MIN_STREAM_PUSH_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function sendStreamFrame(client: PixooClient, canvas: Canvas, picId: number, ip: string): Promise<number> {
   const nextPicId = (picId + 1) % 10000;
   const pushed = await client.send('Draw/SendHttpGif', {
@@ -77,11 +84,20 @@ export async function openPixooStream(ip: string): Promise<PixooStream> {
   // Reset once when opening the stream — not before every frame (that reboots/overloads the device).
   throwIfFailed(await client.resetGifId(), trimmed);
   let picId = Date.now() % 10000;
+  let lastPushFinishedAt = 0;
 
   return {
     async push(frame: Frame) {
-      const canvas = frameToCanvas(frame);
-      picId = await sendStreamFrame(client, canvas, picId, trimmed);
+      const elapsed = Date.now() - lastPushFinishedAt;
+      if (elapsed < MIN_STREAM_PUSH_MS) {
+        await sleep(MIN_STREAM_PUSH_MS - elapsed);
+      }
+      try {
+        const canvas = frameToCanvas(frame);
+        picId = await sendStreamFrame(client, canvas, picId, trimmed);
+      } finally {
+        lastPushFinishedAt = Date.now();
+      }
     },
   };
 }

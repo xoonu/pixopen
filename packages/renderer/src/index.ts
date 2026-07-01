@@ -128,6 +128,13 @@ export {
   parseWeatherFrameConfig,
   demoWeatherSnapshot,
 } from './weatherFrame/index.js';
+export {
+  renderDvdScreensaverBoard,
+  renderDvdScreensaverPreview,
+  parseDvdScreensaverConfig,
+  simulateDvd,
+  dvdEffectiveSimConfig,
+} from './dvdScreensaver/index.js';
 
 export function compositeFrame(
   base: Frame,
