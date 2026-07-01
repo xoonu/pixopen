@@ -1,4 +1,4 @@
-import type { AppTemplate, DataSourceMeta, Frame, Project, SavedDevice, StockQuoteSnapshot, StockTickerPerformancePeriod } from '@pixopen/core';
+import type { AppTemplate, DataSourceMeta, Frame, Project, SavedDevice, StockQuoteSnapshot, StockTickerPerformancePeriod, WeatherLocation, WeatherSnapshot, WeatherTemperatureUnit } from '@pixopen/core';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -154,6 +154,18 @@ export const api = {
           period,
           ...(finnhubApiKey ? { finnhubApiKey } : {}),
         }),
+      }),
+  },
+  weather: {
+    geocode: (q: string, count = 8) =>
+      request<{ results: WeatherLocation[] }>(
+        `/api/weather/geocode?q=${encodeURIComponent(q)}&count=${count}`,
+      ),
+    snapshot: (location: WeatherLocation, temperatureUnit: WeatherTemperatureUnit = 'fahrenheit') =>
+      request<WeatherSnapshot>('/api/weather/snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location, temperatureUnit }),
       }),
   },
 };

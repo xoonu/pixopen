@@ -2,14 +2,14 @@
 
 Browser-based studio and runtime for Divoom Pixoo-64 displays.
 
-Pixopen runs as a **local companion server** that proxies device communication (Pixoo has no CORS), serves a web UI, and runs live data apps that composite dynamic regions onto your 64×64 pixel art.
+Pixopen runs as a **local companion server** that proxies device communication (Pixoo has no CORS), serves a web UI, and runs live prefab apps on your 64×64 display.
 
 ## Features (v0.1)
 
 - Discover Pixoo-64 on your LAN (Divoom cloud) or add IP manually
 - 64×64 pixel editor with full-color pencil, eraser, fill
 - Import still images and animated GIFs (edit frame-by-frame)
-- **Live Frames** — prefab live apps (Flip Note, Stock Ticker) pushed to Pixoo with **Run**
+- **Live Frames** — prefab live apps (Flip Note, Stock Ticker, Weather) pushed to Pixoo with **Run**
 - Deploy frame animations to your Pixoo
 
 ## Live Frames
@@ -18,10 +18,9 @@ In **New project**, choose **Live Frames**:
 
 - **Flip Note** — split-flap letter board with rotating messages
 - **Stock Ticker** — watchlist with rotate, dashboard, and paginated list layouts (3 symbols per page)
+- **Weather** — current conditions for a saved location (Open-Meteo, no API key)
 
-**Start from scratch** is for Image Frame and Animator only. The old blank live-frame builder (custom live regions on a canvas) is removed.
-
-Legacy projects that used live regions still open for viewing; create new live work from the templates above.
+**Start from scratch** is for Image Frame and Animator only.
 
 ## Quick start
 
@@ -43,24 +42,22 @@ Open http://localhost:5173
 
 - Node.js 20+
 - Pixoo-64 on the same network as the machine running Pixopen
-- Internet for device discovery and live data sources
+- Internet for device discovery and live frame data (weather, market quotes)
 
 ## Project structure
 
 - `packages/core` — shared types
 - `packages/device` — Pixoo client + discovery
-- `packages/datasources` — open data stream adapters
-- `packages/renderer` — live area compositor
+- `packages/datasources` — data adapters for live frames
+- `packages/renderer` — frame and live-frame renderers
 - `packages/server` — API + runtime (`pixopen serve`)
 - `packages/web` — React UI
 
-## Data sources (no API key)
+## Weather (Open-Meteo, no API key)
 
-- `local.clock` — server time
-- `open-meteo.current` — weather
-- `terminalfeed.stocks` — US stock movers
-- `sportscore.live` — live sports scores
-- `open-notify.iss` — ISS position
+The **Weather** live frame shows current conditions for a location you pick in the studio. Pixopen geocodes the place name and fetches forecast data from [Open-Meteo](https://open-meteo.com/) on a timer — no API key required.
+
+Weather icons are from [Dhole/weather-pixel-icons](https://github.com/Dhole/weather-pixel-icons) (CC BY-SA 4.0).
 
 ## Stock Ticker (Finnhub API key)
 

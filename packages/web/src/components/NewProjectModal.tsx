@@ -12,6 +12,7 @@ type Props = {
 const TEMPLATE_ICON: Record<string, IconName> = {
   'flip-note': 'flipNote',
   'stock-ticker': 'liveSign',
+  'weather-frame': 'weatherFrame',
   'blank-image-frame': 'imageFrame',
   'blank-animator': 'animator',
 };

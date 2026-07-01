@@ -95,6 +95,63 @@ export type StockQuoteSnapshot = {
   fetchedAt: string;
 };
 
+export type WeatherLocation = {
+  name: string;
+  admin1?: string;
+  country?: string;
+  lat: number;
+  lon: number;
+  timezone?: string;
+};
+
+export type WeatherTemperatureUnit = 'fahrenheit' | 'celsius';
+export type WeatherFrameTheme = 'sky' | 'night' | 'minimal';
+
+export type WeatherFrameColors = {
+  background: string;
+  text: string;
+  accent: string;
+  muted: string;
+};
+
+export type WeatherFrameConfig = {
+  location?: WeatherLocation;
+  temperatureUnit: WeatherTemperatureUnit;
+  holdMs: number;
+  theme: WeatherFrameTheme;
+  colors: WeatherFrameColors;
+};
+
+export type WeatherCurrentSnapshot = {
+  temp: number;
+  weatherCode: number;
+  humidity?: number;
+  windSpeed?: number;
+};
+
+export type WeatherHourlySnapshot = {
+  time: string;
+  temp: number;
+  weatherCode: number;
+  precipProb?: number;
+};
+
+export type WeatherDailySnapshot = {
+  date: string;
+  tempMax: number;
+  tempMin: number;
+  weatherCode: number;
+};
+
+export type WeatherSnapshot = {
+  location: WeatherLocation;
+  current: WeatherCurrentSnapshot;
+  hourly: WeatherHourlySnapshot[];
+  daily: WeatherDailySnapshot[];
+  radarPixels?: number[];
+  fetchedAt: string;
+};
+
 export const MAX_STOCK_TICKER_SYMBOLS = 32;
 
 export const DEFAULT_STOCK_TICKER_SYMBOLS: StockTickerSymbol[] = [
@@ -124,6 +181,20 @@ export const DEFAULT_STOCK_TICKER_CONFIG: StockTickerConfig = {
   holdMs: 4000,
   theme: 'terminal',
   colors: { ...DEFAULT_STOCK_TICKER_COLORS },
+};
+
+const DEFAULT_WEATHER_FRAME_COLORS: WeatherFrameColors = {
+  background: '#0c1824',
+  text: '#e8f0f8',
+  accent: '#59c2ff',
+  muted: '#6a8499',
+};
+
+export const DEFAULT_WEATHER_FRAME_CONFIG: WeatherFrameConfig = {
+  temperatureUnit: 'fahrenheit',
+  holdMs: 6000,
+  theme: 'sky',
+  colors: { ...DEFAULT_WEATHER_FRAME_COLORS },
 };
 
 export const DEFAULT_FLIP_NOTE_CONFIG: FlipNoteConfig = {
@@ -189,6 +260,14 @@ export const APP_TEMPLATES: AppTemplate[] = [
     description: 'Live stock watchlist with rotating quotes, performance, and sparklines.',
     icon: '📈',
   },
+  {
+    id: 'weather-frame',
+    name: 'Weather',
+    type: 'live-sign',
+    category: 'example',
+    description: 'Live current weather for a location — temp, conditions, humidity, and wind.',
+    icon: '🌤',
+  },
 ];
 
 export function getAppTemplate(id: string): AppTemplate | undefined {
@@ -225,6 +304,21 @@ export function shouldUseStockTickerUi(project: {
   return Array.isArray(project.appConfig?.symbols);
 }
 
+function hasWeatherLocation(appConfig?: Record<string, unknown>): boolean {
+  const loc = appConfig?.location;
+  if (!loc || typeof loc !== 'object') return false;
+  const obj = loc as Record<string, unknown>;
+  return Number.isFinite(Number(obj.lat)) && Number.isFinite(Number(obj.lon));
+}
+
+export function shouldUseWeatherUi(project: {
+  templateId?: string | null;
+  appConfig?: Record<string, unknown>;
+}): boolean {
+  if (project.templateId === 'weather-frame') return true;
+  return hasWeatherLocation(project.appConfig);
+}
+
 export function shouldUseFlipNoteUi(project: {
   templateId?: string | null;
   type?: string;
@@ -232,6 +326,7 @@ export function shouldUseFlipNoteUi(project: {
   appConfig?: Record<string, unknown>;
 }): boolean {
   if (shouldUseStockTickerUi(project)) return false;
+  if (shouldUseWeatherUi(project)) return false;
   if (project.templateId && LEGACY_FLIP_NOTE_TEMPLATE_IDS.has(project.templateId)) return true;
   if (Array.isArray(project.appConfig?.messages)) return true;
   const type = migrateProjectType(project.type ?? 'animator');
@@ -389,6 +484,76 @@ export function normalizeFlipNoteAppConfig(appConfig: Record<string, unknown> | 
     backgroundGradientOrigin,
     holdMs: Number(raw.holdMs ?? DEFAULT_FLIP_NOTE_CONFIG.holdMs),
     flipMs: Number(raw.flipMs ?? DEFAULT_FLIP_NOTE_CONFIG.flipMs),
+  };
+}
+
+function parseWeatherLocation(raw: unknown): WeatherLocation | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  const lat = Number(obj.lat);
+  const lon = Number(obj.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return undefined;
+  const name = String(obj.name ?? '').trim().slice(0, 48);
+  if (!name) return undefined;
+  const admin1 = obj.admin1 != null ? String(obj.admin1).trim().slice(0, 48) : undefined;
+  const country = obj.country != null ? String(obj.country).trim().slice(0, 48) : undefined;
+  const timezone = obj.timezone != null ? String(obj.timezone).trim().slice(0, 64) : undefined;
+  return {
+    name,
+    lat,
+    lon,
+    ...(admin1 ? { admin1 } : {}),
+    ...(country ? { country } : {}),
+    ...(timezone ? { timezone } : {}),
+  };
+}
+
+const WEATHER_THEME_PRESETS: Record<WeatherFrameTheme, WeatherFrameColors> = {
+  sky: {
+    background: '#0c1824',
+    text: '#e8f0f8',
+    accent: '#59c2ff',
+    muted: '#6a8499',
+  },
+  night: {
+    background: '#0a0e18',
+    text: '#c8d0e0',
+    accent: '#8899ff',
+    muted: '#556677',
+  },
+  minimal: {
+    background: '#111111',
+    text: '#eeeeee',
+    accent: '#cccccc',
+    muted: '#888888',
+  },
+};
+
+export function normalizeWeatherFrameAppConfig(
+  appConfig: Record<string, unknown> | undefined,
+): WeatherFrameConfig {
+  const raw = appConfig ?? {};
+  const location = parseWeatherLocation(raw.location);
+  const unitRaw = String(raw.temperatureUnit ?? DEFAULT_WEATHER_FRAME_CONFIG.temperatureUnit);
+  const temperatureUnit: WeatherTemperatureUnit = unitRaw === 'celsius' ? 'celsius' : 'fahrenheit';
+  const themeRaw = String(raw.theme ?? DEFAULT_WEATHER_FRAME_CONFIG.theme);
+  const theme: WeatherFrameTheme =
+    themeRaw === 'night' || themeRaw === 'minimal' ? themeRaw : 'sky';
+  const colorsRaw = raw.colors && typeof raw.colors === 'object' ? (raw.colors as Record<string, unknown>) : {};
+  const preset = WEATHER_THEME_PRESETS[theme];
+  const colors: WeatherFrameColors = {
+    background: normalizeHexColor(colorsRaw.background, preset.background),
+    text: normalizeHexColor(colorsRaw.text, preset.text),
+    accent: normalizeHexColor(colorsRaw.accent, preset.accent),
+    muted: normalizeHexColor(colorsRaw.muted, preset.muted),
+  };
+  const holdMs = Number(raw.holdMs ?? DEFAULT_WEATHER_FRAME_CONFIG.holdMs);
+  return {
+    ...(location ? { location } : {}),
+    temperatureUnit,
+    holdMs: Number.isFinite(holdMs) ? Math.max(3000, Math.min(15000, holdMs)) : 6000,
+    theme,
+    colors,
   };
 }
 

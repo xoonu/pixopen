@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { shouldUseFlipNoteUi, shouldUseStockTickerUi } from '@pixopen/core';
+import { shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi } from '@pixopen/core';
 import { api } from '../lib/api';
 import { projectTypeBadgeClass } from '../lib/projectBadges';
 import { deviceDisplayLabel, deviceDisplayTitle } from '../lib/deviceLabel';
@@ -33,8 +33,9 @@ export function StudioChrome({ deviceIp }: Props) {
 
   const isFlipNote = shouldUseFlipNoteUi(project);
   const isStockTicker = shouldUseStockTickerUi(project);
+  const isWeather = shouldUseWeatherUi(project);
   const isImageFrame = project.type === 'image-frame';
-  const hideTargetDevice = isFlipNote || isStockTicker || isImageFrame;
+  const hideTargetDevice = isFlipNote || isStockTicker || isWeather || isImageFrame;
   const canSend = Boolean(deviceIp) && !nameConflict && Boolean(project.name.trim()) && !sending;
   const isThisProjectLive = liveRuntimeActive && liveRuntimeProjectId === project.id && !runtimeError;
 
@@ -68,7 +69,7 @@ export function StudioChrome({ deviceIp }: Props) {
     try {
       await save();
       await api.projects.run(project.id, deviceIp);
-      if (!shouldUseFlipNoteUi(project) && !shouldUseStockTickerUi(project)) {
+      if (!shouldUseFlipNoteUi(project) && !shouldUseStockTickerUi(project) && !shouldUseWeatherUi(project)) {
         setStatus(`Live on ${deviceLabel}`);
       }
     } catch (e) {
@@ -103,7 +104,7 @@ export function StudioChrome({ deviceIp }: Props) {
           onFocus={() => setNameFocused(true)}
           onBlur={() => setNameFocused(false)}
         />
-        {!isFlipNote && !isStockTicker ? (
+        {!isFlipNote && !isStockTicker && !isWeather ? (
           <div className="flex flex-wrap gap-1.5 mt-2">
             <span className={projectTypeBadgeClass(project.type)}>{projectTypeLabel}</span>
             {isThisProjectLive ? (

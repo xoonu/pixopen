@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, shouldUseStockTickerUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { ControlSection, Field } from './ControlSection';
 import { ScrollRegion } from './ScrollRegion';
@@ -10,6 +10,8 @@ import { FlipNoteBoardPanel } from './FlipNoteBoardPanel';
 import { FlipNoteStudio } from './FlipNoteStudio';
 import { StockTickerPanel } from './StockTickerPanel';
 import { StockTickerStudio } from './StockTickerStudio';
+import { WeatherPanel } from './WeatherPanel';
+import { WeatherStudio } from './WeatherStudio';
 import { StudioChrome } from './StudioChrome';
 import { SequencePreview } from './SequencePreview';
 import { frameToImageData, useStudio } from '../studio/StudioProvider';
@@ -108,9 +110,10 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
 
   const isFlipNote = shouldUseFlipNoteUi(project);
   const isStockTicker = shouldUseStockTickerUi(project);
+  const isWeather = shouldUseWeatherUi(project);
   const isImageFrame = project.type === 'image-frame';
   const isAnimator = project.type === 'animator';
-  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker;
+  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather;
   const showToolbar = drawingTools.length > 0;
   const imageMode = String(project.appConfig?.mode ?? 'slideshow') as 'single' | 'slideshow';
 
@@ -159,6 +162,25 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
         </aside>
         <main className="studio-main-panel min-w-0">
           <StockTickerStudio project={project} onChange={handleStockTickerChange} />
+        </main>
+      </div>
+    );
+  }
+
+  if (isWeather) {
+    const handleWeatherChange = (appConfig: Record<string, unknown>) => {
+      setProject((prev) => (prev ? { ...prev, appConfig: { ...prev.appConfig, ...appConfig } } : prev));
+      syncLiveSignToRuntime(project.id, appConfig);
+    };
+
+    return (
+      <div className="studio-page studio-workspace-layout">
+        <aside className="studio-sidebar" aria-label="Project sidebar">
+          <StudioChrome deviceIp={deviceIp} />
+          <WeatherPanel project={project} onChange={handleWeatherChange} />
+        </aside>
+        <main className="studio-main-panel min-w-0">
+          <WeatherStudio project={project} onChange={handleWeatherChange} />
         </main>
       </div>
     );

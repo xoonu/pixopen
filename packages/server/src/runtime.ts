@@ -1,10 +1,11 @@
-import { compositeFrame, parseFlipNoteConfig, parseStockTickerConfig, renderFlipNoteBoard, renderStockTickerBoard } from '@pixopen/renderer';
+import { compositeFrame, parseFlipNoteConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderFlipNoteBoard, renderStockTickerBoard, renderWeatherBoard } from '@pixopen/renderer';
 import { fetchDataSource, getDataSource } from '@pixopen/datasources';
 import { openPixooStream, type PixooStream } from '@pixopen/device';
 import type { DataSourceResult } from '@pixopen/datasources';
-import { normalizeProject, shouldUseFlipNoteUi, shouldUseStockTickerUi, stockTickerQuoteSymbols, type Project, type StockQuoteSnapshot } from '@pixopen/core';
+import { normalizeProject, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type Project, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
 import type { WebSocket } from 'ws';
 import { fetchStockQuotes } from './marketData/quotes.js';
+import { fetchWeatherSnapshot } from './weatherData/index.js';
 
 type RuntimeState = {
   project: Project;
@@ -21,12 +22,16 @@ type RuntimeState = {
   quotes: StockQuoteSnapshot[];
   quotesKey: string;
   quotesFetchedAt: number;
+  weatherSnapshot: WeatherSnapshot | null;
+  weatherKey: string;
+  weatherFetchedAt: number;
 };
 
 /** Minimum ms between Pixoo pushes — preview can tick faster than this. */
 const FLIP_NOTE_DEVICE_PUSH_MS = 400;
 const LIVE_SIGN_DEVICE_PUSH_MS = 1000;
 const STOCK_QUOTE_REFRESH_MS = 30_000;
+const WEATHER_REFRESH_MS = 10 * 60_000;
 
 let active: RuntimeState | null = null;
 const previewClients = new Set<WebSocket>();
@@ -73,10 +78,11 @@ export function syncRuntimeProject(project: Project) {
   active.project = normalizeProject(project);
   active.lastPushedPixels = null;
   active.quotesKey = '';
+  active.weatherKey = '';
 }
 
 function isAnimatedLiveSign(project: Project): boolean {
-  return shouldUseFlipNoteUi(project) || shouldUseStockTickerUi(project);
+  return shouldUseFlipNoteUi(project) || shouldUseStockTickerUi(project) || shouldUseWeatherUi(project);
 }
 
 async function refreshQuotesIfNeeded(state: RuntimeState): Promise<StockQuoteSnapshot[]> {
@@ -101,11 +107,35 @@ async function refreshQuotesIfNeeded(state: RuntimeState): Promise<StockQuoteSna
   return result.quotes;
 }
 
+async function refreshWeatherIfNeeded(state: RuntimeState): Promise<WeatherSnapshot | null> {
+  const config = parseWeatherFrameConfig(state.project.appConfig);
+  if (!config.location) return null;
+  const key = JSON.stringify({
+    lat: config.location.lat,
+    lon: config.location.lon,
+    unit: config.temperatureUnit,
+  });
+  const now = Date.now();
+  if (
+    state.weatherKey === key &&
+    state.weatherSnapshot &&
+    now - state.weatherFetchedAt < WEATHER_REFRESH_MS
+  ) {
+    return state.weatherSnapshot;
+  }
+  const snapshot = await fetchWeatherSnapshot(config.location, config.temperatureUnit);
+  state.weatherSnapshot = snapshot;
+  state.weatherKey = key;
+  state.weatherFetchedAt = now;
+  return snapshot;
+}
+
 function renderLiveFrame(
   project: Project,
   state: RuntimeState,
   values: Map<string, DataSourceResult>,
   quotes: StockQuoteSnapshot[],
+  weather: WeatherSnapshot | null,
 ) {
   const base = project.frames[0];
   if (!base) throw new Error('Project has no base frame');
@@ -114,6 +144,12 @@ function renderLiveFrame(
     const config = parseStockTickerConfig(project.appConfig);
     const elapsedMs = Date.now() - state.startedAt;
     return renderStockTickerBoard(config, quotes, elapsedMs);
+  }
+
+  if (shouldUseWeatherUi(project)) {
+    const config = parseWeatherFrameConfig(project.appConfig);
+    const elapsedMs = Date.now() - state.startedAt;
+    return renderWeatherBoard(config, weather, elapsedMs);
   }
 
   if (shouldUseFlipNoteUi(project)) {
@@ -151,6 +187,9 @@ export async function startRuntime(project: Project, deviceIp: string) {
     quotes: [],
     quotesKey: '',
     quotesFetchedAt: 0,
+    weatherSnapshot: null,
+    weatherKey: '',
+    weatherFetchedAt: 0,
   };
   active = state;
 
@@ -164,9 +203,12 @@ export async function startRuntime(project: Project, deviceIp: string) {
       const project = state.project;
       const values = new Map<string, DataSourceResult>();
       let quotes: StockQuoteSnapshot[] = [];
+      let weather: WeatherSnapshot | null = null;
 
       if (shouldUseStockTickerUi(project)) {
         quotes = await refreshQuotesIfNeeded(state);
+      } else if (shouldUseWeatherUi(project)) {
+        weather = await refreshWeatherIfNeeded(state);
       } else if (!shouldUseFlipNoteUi(project)) {
         for (const area of project.liveAreas) {
           const adapter = getDataSource(area.datasourceId);
@@ -187,7 +229,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
         }
       }
 
-      const frame = renderLiveFrame(project, state, values, quotes);
+      const frame = renderLiveFrame(project, state, values, quotes, weather);
       state.lastFrame = frame.pixels;
       broadcastPreview(frame.pixels);
 

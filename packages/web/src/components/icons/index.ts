@@ -2,6 +2,7 @@ import {
   Add01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  CloudIcon,
   ComputerIcon,
   Copy01Icon,
   Delete02Icon,
@@ -40,6 +41,8 @@ export const icons = {
   liveSign: LiveStreaming01Icon,
   /** Project template: flip note */
   flipNote: Note01Icon,
+  /** Project template: weather frame */
+  weatherFrame: CloudIcon,
   /** Editor: pencil tool */
   pencil: PencilIcon,
   /** Editor: eraser tool */

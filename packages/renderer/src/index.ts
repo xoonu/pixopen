@@ -122,6 +122,12 @@ export {
   demoQuotesForConfig,
   listSymbolsPerPage,
 } from './stockTicker/index.js';
+export {
+  renderWeatherBoard,
+  renderWeatherPreview,
+  parseWeatherFrameConfig,
+  demoWeatherSnapshot,
+} from './weatherFrame/index.js';
 
 export function compositeFrame(
   base: Frame,

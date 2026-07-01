@@ -34,13 +34,16 @@ import {
   DEFAULT_IMAGE_FRAME_CONFIG,
   DEFAULT_FLIP_NOTE_CONFIG,
   DEFAULT_STOCK_TICKER_CONFIG,
+  DEFAULT_WEATHER_FRAME_CONFIG,
   createDarkFramePixels,
   getAppTemplate,
   migrateProjectType,
   normalizeFlipNoteAppConfig,
   normalizeStockTickerAppConfig,
+  normalizeWeatherFrameAppConfig,
   shouldUseFlipNoteUi,
   shouldUseStockTickerUi,
+  shouldUseWeatherUi,
 } from './apps.js';
 
 export type ProjectType = 'image-frame' | 'animator' | 'live-sign';
@@ -182,6 +185,10 @@ export function createProjectFromTemplate(
     project.appConfig = { ...DEFAULT_STOCK_TICKER_CONFIG };
     project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
     project.liveAreas = [];
+  } else if (resolvedTemplateId === 'weather-frame') {
+    project.appConfig = { ...DEFAULT_WEATHER_FRAME_CONFIG };
+    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
+    project.liveAreas = [];
   } else if (template.type === 'image-frame') {
     project.appConfig = { ...DEFAULT_IMAGE_FRAME_CONFIG };
   }
@@ -196,7 +203,11 @@ export function normalizeProject(raw: Project): Project {
     templateId: raw.templateId,
     appConfig: rawConfig,
   });
-  const useFlipNote = !useStockTicker && shouldUseFlipNoteUi({
+  const useWeather = !useStockTicker && shouldUseWeatherUi({
+    templateId: raw.templateId,
+    appConfig: rawConfig,
+  });
+  const useFlipNote = !useStockTicker && !useWeather && shouldUseFlipNoteUi({
     templateId: raw.templateId,
     type: raw.type as string,
     name: raw.name,
@@ -209,6 +220,9 @@ export function normalizeProject(raw: Project): Project {
   if (useStockTicker) {
     templateId = 'stock-ticker';
     appConfig = { ...rawConfig, ...normalizeStockTickerAppConfig(rawConfig) };
+  } else if (useWeather) {
+    templateId = 'weather-frame';
+    appConfig = { ...rawConfig, ...normalizeWeatherFrameAppConfig(rawConfig) };
   } else if (useFlipNote) {
     templateId = 'flip-note';
     appConfig = { ...rawConfig, ...normalizeFlipNoteAppConfig(rawConfig) };
@@ -219,7 +233,7 @@ export function normalizeProject(raw: Project): Project {
   }
 
   let frames = raw.frames?.length ? raw.frames : [createEmptyFrame()];
-  if ((useFlipNote || useStockTicker) && frames.length === 1 && isBlankFrame(frames[0])) {
+  if ((useFlipNote || useStockTicker || useWeather) && frames.length === 1 && isBlankFrame(frames[0])) {
     frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
   }
 
@@ -229,7 +243,7 @@ export function normalizeProject(raw: Project): Project {
     templateId,
     appConfig,
     frames,
-    liveAreas: useFlipNote || useStockTicker ? [] : (raw.liveAreas ?? []),
+    liveAreas: useFlipNote || useStockTicker || useWeather ? [] : (raw.liveAreas ?? []),
   };
 }
 

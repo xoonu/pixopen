@@ -72,7 +72,7 @@ const FONT: Record<string, number[][]> = {
   'J': [[0,0,1],[0,0,1],[0,0,1],[1,0,1],[0,1,0]],
   'K': [[1,0,1],[1,0,1],[1,1,0],[1,0,1],[1,0,1]],
   'L': [[1,0,0],[1,0,0],[1,0,0],[1,0,0],[1,1,1]],
-  'M': [[1,0,1],[1,1,1],[1,0,1],[1,0,1],[1,0,1]],
+  'M': [[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1]],
   'N': [[1,0,1],[1,1,1],[1,1,1],[1,0,1],[1,0,1]],
   'O': [[0,1,0],[1,0,1],[1,0,1],[1,0,1],[0,1,0]],
   'P': [[1,1,0],[1,0,1],[1,1,0],[1,0,0],[1,0,0]],
@@ -89,10 +89,20 @@ const FONT: Record<string, number[][]> = {
   ' ': [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
 };
 
-const CHAR_WIDTH = 4;
+const CHAR_GAP = 1;
+
+function glyphFor(ch: string): number[][] {
+  return FONT[ch.toUpperCase()] ?? FONT[' '];
+}
+
+function glyphColumnCount(glyph: number[][]): number {
+  return glyph.reduce((max, row) => Math.max(max, row.length), 0);
+}
 
 export function charAdvance(ch: string, scale = 1): number {
-  return ch === '.' ? 3 * scale : CHAR_WIDTH * scale;
+  if (ch === ' ') return 3 * scale;
+  const cols = glyphColumnCount(glyphFor(ch));
+  return cols * scale + CHAR_GAP * scale;
 }
 
 export function drawChar(
@@ -103,14 +113,13 @@ export function drawChar(
   color: [number, number, number],
   scale = 1,
 ) {
-  const glyph = FONT[ch.toUpperCase()] ?? FONT[' '];
-  const drawX = ch === '.' ? x + scale : x;
+  const glyph = glyphFor(ch);
   for (let gy = 0; gy < glyph.length; gy++) {
     for (let gx = 0; gx < glyph[gy].length; gx++) {
       if (!glyph[gy][gx]) continue;
       for (let sy = 0; sy < scale; sy++) {
         for (let sx = 0; sx < scale; sx++) {
-          setPx(pixels, drawX + gx * scale + sx, y + gy * scale + sy, color);
+          setPx(pixels, x + gx * scale + sx, y + gy * scale + sy, color);
         }
       }
     }

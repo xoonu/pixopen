@@ -39,6 +39,8 @@ import {
 } from './storage.js';
 import { getRuntimeStatus, startRuntime, stopRuntime, syncRuntimeProject } from './runtime.js';
 import { fetchStockQuotes, marketDataStatus } from './marketData/quotes.js';
+import { fetchWeatherSnapshot, geocodeLocation } from './weatherData/index.js';
+import type { WeatherLocation, WeatherTemperatureUnit } from '@pixopen/core';
 
 export function createApp(options?: { webDist?: string }) {
   const app = new Hono();
@@ -277,6 +279,37 @@ export function createApp(options?: { webDist?: string }) {
       return c.json(result);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Quote fetch failed';
+      return c.json({ error: message }, 502);
+    }
+  });
+
+  app.get('/api/weather/geocode', async (c) => {
+    const q = c.req.query('q')?.trim() ?? '';
+    const countRaw = Number(c.req.query('count') ?? 8);
+    const count = Number.isFinite(countRaw) ? countRaw : 8;
+    if (q.length < 2) return c.json({ results: [] });
+    try {
+      const results = await geocodeLocation(q, count);
+      return c.json({ results });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Geocoding failed';
+      return c.json({ error: message }, 502);
+    }
+  });
+
+  app.post('/api/weather/snapshot', async (c) => {
+    const body = await c.req.json<{ location?: WeatherLocation; temperatureUnit?: string }>();
+    const loc = body.location;
+    if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lon) || !loc.name?.trim()) {
+      return c.json({ error: 'Valid location required' }, 400);
+    }
+    const unitRaw = String(body.temperatureUnit ?? 'fahrenheit');
+    const temperatureUnit: WeatherTemperatureUnit = unitRaw === 'celsius' ? 'celsius' : 'fahrenheit';
+    try {
+      const snapshot = await fetchWeatherSnapshot(loc, temperatureUnit);
+      return c.json(snapshot);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Weather fetch failed';
       return c.json({ error: message }, 502);
     }
   });
