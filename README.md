@@ -19,7 +19,7 @@ In **New project**, choose **Live Frames**:
 - **Flip Note** — split-flap letter board with rotating messages
 - **Stock Ticker** — watchlist with rotate, dashboard, and paginated list layouts (3 symbols per page)
 - **Weather** — current conditions for a saved location (Open-Meteo, no API key)
-- **DVD Screensaver** — the classic bouncing DVD logo (for the memes)
+- **DVD Screensaver** — classic bouncing DVD logo with speed, smoothness, and corner-hit tracking in the studio
 
 **Start from scratch** is for Image Frame and Animator only.
 
@@ -69,3 +69,16 @@ The key is saved with the project. You can also set `FINNHUB_API_KEY` on the ser
 Without a key, the ticker shows demo quotes for layout work.
 
 Display modes: **rotate** (one symbol at a time), **dashboard** (header + sparkline), **list** (paginated watchlist). Performance period (1D / 1W / 1M / YTD) controls change % and sparkline range.
+
+## DVD Screensaver
+
+The **DVD Screensaver** live frame streams the classic bouncing DVD Video logo on a black 64×64 canvas. Color shifts on each wall bounce; corner hits are tracked in the studio sidebar only (not on the device).
+
+Studio controls:
+
+- **Movement speed** — base travel speed in pixels per second
+- **Smoothness** — slows motion and adds a short motion trail (up to 3 ghost frames) tuned for Pixoo’s ~2 fps update rate
+- **Logo size** — 1× or 2×
+- **Corner sensitivity** — how close a bounce must be to count as a corner hit
+
+Use **Run on Pixoo** to stream live frames. Pixoo accepts updates at roughly **2 frames per second** (500 ms minimum between pushes); faster rates can reboot the device. The runtime uses incremental physics so the animation stays smooth during long runs without freezing.

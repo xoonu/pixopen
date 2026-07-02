@@ -131,8 +131,10 @@ export {
 export {
   renderDvdScreensaverBoard,
   renderDvdScreensaverPreview,
+  renderDvdScreensaverFromSimulator,
   parseDvdScreensaverConfig,
   simulateDvd,
+  DvdSimulator,
   dvdEffectiveSimConfig,
 } from './dvdScreensaver/index.js';
 

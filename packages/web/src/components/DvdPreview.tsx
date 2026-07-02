@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { CANVAS_SIZE } from '@pixopen/core';
-import { parseDvdScreensaverConfig, renderDvdScreensaverPreview, simulateDvd, dvdEffectiveSimConfig } from '@pixopen/renderer';
+import {
+  parseDvdScreensaverConfig,
+  renderDvdScreensaverFromSimulator,
+  DvdSimulator,
+  dvdEffectiveSimConfig,
+} from '@pixopen/renderer';
 
 type Props = {
   appConfig?: Record<string, unknown>;
@@ -32,6 +37,8 @@ export function DvdPreview({
   const configRef = useRef(appConfig);
   const playingRef = useRef(playing);
   const onCornerHitsRef = useRef(onCornerHitsChange);
+  const simRef = useRef<DvdSimulator | null>(null);
+  const simKeyRef = useRef('');
 
   configRef.current = appConfig;
   playingRef.current = playing;
@@ -50,10 +57,19 @@ export function DvdPreview({
     const draw = () => {
       const elapsed = playingRef.current ? Date.now() - start : 0;
       const config = parseDvdScreensaverConfig(configRef.current);
-      const frame = renderDvdScreensaverPreview(configRef.current, elapsed);
+      const simConfig = dvdEffectiveSimConfig(config);
+      const simKey = `${simConfig.seed}|${simConfig.speedPxPerSec}|${simConfig.logoScale}|${simConfig.cornerSensitivity}`;
+
+      if (!simRef.current || simKeyRef.current !== simKey) {
+        simRef.current = new DvdSimulator(simConfig);
+        simKeyRef.current = simKey;
+      }
+
+      simRef.current.advanceTo(elapsed);
+      const frame = renderDvdScreensaverFromSimulator(config, simRef.current);
       putFramePixels(ctx, frame.pixels);
 
-      const hits = simulateDvd(dvdEffectiveSimConfig(config), elapsed).cornerHits;
+      const hits = simRef.current.getState().cornerHits;
       if (hits !== lastHits) {
         lastHits = hits;
         onCornerHitsRef.current?.(hits);

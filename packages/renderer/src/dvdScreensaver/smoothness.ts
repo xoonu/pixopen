@@ -20,11 +20,14 @@ export function dvdEffectiveSimConfig(config: DvdScreensaverConfig): DvdScreensa
   };
 }
 
+/** Max motion-trail ghosts behind the logo. */
+const MAX_TRAIL_FRAMES = 3;
+
 /** Motion-trail ghosts spaced at the device frame interval. */
 export function smoothnessTrailStepCount(smoothness: number): number {
   const s = normalizeSmoothness(smoothness);
   if (s <= 2) return 0;
-  return Math.min(5, Math.floor((s - 1) / 1.6));
+  return Math.min(MAX_TRAIL_FRAMES, Math.floor((s - 1) / 1.6));
 }
 
 export function smoothnessGhostAlpha(smoothness: number, stepIndex: number, totalSteps: number): number {

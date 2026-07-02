@@ -1,4 +1,4 @@
-import { compositeFrame, parseDvdScreensaverConfig, parseFlipNoteConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderDvdScreensaverBoard, renderFlipNoteBoard, renderStockTickerBoard, renderWeatherBoard } from '@pixopen/renderer';
+import { compositeFrame, parseDvdScreensaverConfig, parseFlipNoteConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderDvdScreensaverFromSimulator, renderFlipNoteBoard, renderStockTickerBoard, renderWeatherBoard, DvdSimulator, dvdEffectiveSimConfig } from '@pixopen/renderer';
 import { fetchDataSource, getDataSource } from '@pixopen/datasources';
 import { openPixooStream, type PixooStream } from '@pixopen/device';
 import type { DataSourceResult } from '@pixopen/datasources';
@@ -27,6 +27,8 @@ type RuntimeState = {
   weatherSnapshot: WeatherSnapshot | null;
   weatherKey: string;
   weatherFetchedAt: number;
+  dvdSimulator: DvdSimulator | null;
+  dvdSimConfigKey: string;
 };
 
 /** Minimum ms between Pixoo pushes — faster rates crash/reboot the device. */
@@ -85,6 +87,15 @@ export function syncRuntimeProject(project: Project) {
   active.lastPushedPixels = null;
   active.quotesKey = '';
   active.weatherKey = '';
+  if (shouldUseDvdScreensaverUi(active.project) && active.dvdSimulator) {
+    const config = parseDvdScreensaverConfig(active.project.appConfig);
+    const simConfig = dvdEffectiveSimConfig(config);
+    const simKey = `${simConfig.seed}|${simConfig.speedPxPerSec}|${simConfig.logoScale}|${simConfig.cornerSensitivity}`;
+    if (simKey !== active.dvdSimConfigKey) {
+      active.dvdSimulator = null;
+      active.dvdSimConfigKey = '';
+    }
+  }
 }
 
 function isAnimatedLiveSign(project: Project): boolean {
@@ -170,8 +181,14 @@ function renderLiveFrame(
 
   if (shouldUseDvdScreensaverUi(project)) {
     const config = parseDvdScreensaverConfig(project.appConfig);
-    const elapsedMs = Date.now() - state.startedAt;
-    return renderDvdScreensaverBoard(config, elapsedMs);
+    const simConfig = dvdEffectiveSimConfig(config);
+    const simKey = `${simConfig.seed}|${simConfig.speedPxPerSec}|${simConfig.logoScale}|${simConfig.cornerSensitivity}`;
+    if (!state.dvdSimulator || state.dvdSimConfigKey !== simKey) {
+      state.dvdSimulator = new DvdSimulator(simConfig);
+      state.dvdSimConfigKey = simKey;
+    }
+    state.dvdSimulator.advanceTo(Date.now() - state.startedAt);
+    return renderDvdScreensaverFromSimulator(config, state.dvdSimulator);
   }
 
   if (shouldUseFlipNoteUi(project)) {
@@ -212,6 +229,8 @@ export async function startRuntime(project: Project, deviceIp: string) {
     weatherSnapshot: null,
     weatherKey: '',
     weatherFetchedAt: 0,
+    dvdSimulator: null,
+    dvdSimConfigKey: '',
   };
   active = state;
 

@@ -59,22 +59,32 @@ function isLogoAt(mask: LogoCell[], col: number, row: number): boolean {
   return mask[row * DVD_LOGO_W + col] === 1;
 }
 
-/** One-pixel fringe softens the silhouette against black. */
-function logoShade(mask: LogoCell[], col: number, row: number): 'body' | 'edge' {
-  if (!isLogoAt(mask, col, row)) return 'edge';
-  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  for (const [dx, dy] of dirs) {
-    if (!isLogoAt(mask, col + dx, row + dy)) return 'edge';
+/** Count transparent 4-neighbors — used for subtle silhouette AA on the main logo. */
+function exteriorOpenNeighbors(mask: LogoCell[], col: number, row: number): number {
+  let open = 0;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    if (!isLogoAt(mask, col + dx, row + dy)) open += 1;
   }
-  return 'body';
+  return open;
 }
 
-function darken(color: [number, number, number], factor: number): [number, number, number] {
-  return [
-    Math.round(color[0] * factor),
-    Math.round(color[1] * factor),
-    Math.round(color[2] * factor),
-  ];
+/** Main logo: solid fill with light edge AA. Trail ghosts: uniform fade, no edge pass. */
+function pixelAlpha(globalAlpha: number, openNeighbors: number): number {
+  if (globalAlpha < 255) return globalAlpha;
+  if (openNeighbors === 0) return 255;
+  if (openNeighbors >= 2) return 215;
+  return 232;
+}
+
+function drawLogoPixel(
+  pixels: number[],
+  px: number,
+  py: number,
+  color: [number, number, number],
+  alpha: number,
+) {
+  if (alpha >= 255) setPx(pixels, px, py, color);
+  else plotPixel(pixels, px, py, color, alpha);
 }
 
 function plotPixel(
@@ -97,7 +107,7 @@ function plotPixel(
   if (outA <= 0) return;
   pixels[i] = Math.round((color[0] * srcA + pixels[i] * dstA * (1 - srcA)) / outA);
   pixels[i + 1] = Math.round((color[1] * srcA + pixels[i + 1] * dstA * (1 - srcA)) / outA);
-  pixels[i + 2] = Math.round((color[2] * srcA + pixels[i + 2] * dstA * (1 - srcA)) / outA);
+  pixels[i + 2] = Math.round((color[2] * srcA + pixels[i] * dstA * (1 - srcA)) / outA);
   pixels[i + 3] = Math.round(outA * 255);
 }
 
@@ -121,20 +131,14 @@ export function drawDvdLogo(
   for (let row = 0; row < DVD_LOGO_H; row++) {
     for (let col = 0; col < DVD_LOGO_W; col++) {
       if (!isLogoAt(mask, col, row)) continue;
-      const shade = logoShade(mask, col, row);
-      const pxColor = shade === 'body' ? color : darken(color, 0.72);
-      const alpha = shade === 'edge' ? Math.round(globalAlpha * 0.78) : globalAlpha;
+      const alpha = pixelAlpha(globalAlpha, exteriorOpenNeighbors(mask, col, row));
 
       if (scale === 1) {
-        if (alpha >= 255) setPx(pixels, x + col, y + row, pxColor);
-        else plotPixel(pixels, x + col, y + row, pxColor, alpha);
+        drawLogoPixel(pixels, x + col, y + row, color, alpha);
       } else {
         for (let sy = 0; sy < 2; sy++) {
           for (let sx = 0; sx < 2; sx++) {
-            const px = x + col * 2 + sx;
-            const py = y + row * 2 + sy;
-            if (alpha >= 255) setPx(pixels, px, py, pxColor);
-            else plotPixel(pixels, px, py, pxColor, alpha);
+            drawLogoPixel(pixels, x + col * 2 + sx, y + row * 2 + sy, color, alpha);
           }
         }
       }
