@@ -21,7 +21,7 @@ export function dvdEffectiveSimConfig(config: DvdScreensaverConfig): DvdScreensa
 }
 
 /** Max motion-trail ghosts behind the logo. */
-const MAX_TRAIL_FRAMES = 3;
+const MAX_TRAIL_FRAMES = 2;
 
 /** Motion-trail ghosts spaced at the device frame interval. */
 export function smoothnessTrailStepCount(smoothness: number): number {

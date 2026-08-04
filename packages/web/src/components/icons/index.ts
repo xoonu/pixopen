@@ -2,6 +2,7 @@ import {
   Add01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  Album01Icon,
   CloudIcon,
   ComputerIcon,
   Copy01Icon,
@@ -45,6 +46,8 @@ export const icons = {
   weatherFrame: CloudIcon,
   /** Project template: DVD screensaver */
   dvdScreensaver: PlayIcon,
+  /** Project template: Spotify now playing */
+  spotifyNowPlaying: Album01Icon,
   /** Editor: pencil tool */
   pencil: PencilIcon,
   /** Editor: eraser tool */

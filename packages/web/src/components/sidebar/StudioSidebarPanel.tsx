@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi } from '@pixopen/core';
+import { shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
 import { api } from '../../lib/api';
 import { Field } from '../ControlSection';
 import { SequencePreview } from '../SequencePreview';
@@ -7,6 +7,7 @@ import { FlipNotePreview } from '../FlipNotePreview';
 import { StockTickerPreview } from '../StockTickerPreview';
 import { WeatherPreview } from '../WeatherPreview';
 import { DvdPreview } from '../DvdPreview';
+import { SpotifyPreview } from '../SpotifyPreview';
 import { useStudio } from '../../studio/StudioProvider';
 
 type Props = {
@@ -96,6 +97,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
   const isStockTicker = shouldUseStockTickerUi(project);
   const isWeather = shouldUseWeatherUi(project);
   const isDvd = shouldUseDvdScreensaverUi(project);
+  const isSpotify = shouldUseSpotifyNowPlayingUi(project);
 
   return (
     <div className="sidebar-panel-stack">
@@ -185,6 +187,11 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
               <span className="field-label">Preview</span>
               <DvdPreview appConfig={project.appConfig} scale={3} playing />
             </div>
+          ) : isSpotify ? (
+            <div className="sidebar-spotify-now-playing-preview">
+              <span className="field-label">Preview</span>
+              <SpotifyPreview appConfig={project.appConfig} scale={3} playing />
+            </div>
           ) : (
             <SequencePreview
               compact
@@ -203,7 +210,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
       {runtimeError ? (
         <p className="status-error sidebar-status">Pixoo update failed: {runtimeError}</p>
       ) : null}
-      {isThisProjectLive && (isFlipNote || isStockTicker || isWeather || isDvd) ? (
+      {isThisProjectLive && (isFlipNote || isStockTicker || isWeather || isDvd || isSpotify) ? (
         <p className="sidebar-status muted">Live on Pixoo — animation is streaming to your device.</p>
       ) : null}
     </div>

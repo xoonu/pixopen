@@ -137,6 +137,12 @@ export {
   DvdSimulator,
   dvdEffectiveSimConfig,
 } from './dvdScreensaver/index.js';
+export {
+  renderSpotifyNowPlayingBoard,
+  renderSpotifyNowPlayingPreview,
+  parseSpotifyNowPlayingConfig,
+  createSpotifyLogoPixels,
+} from './spotifyNowPlaying/index.js';
 
 export function compositeFrame(
   base: Frame,

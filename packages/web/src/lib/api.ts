@@ -1,4 +1,4 @@
-import type { AppTemplate, DataSourceMeta, Frame, Project, SavedDevice, StockQuoteSnapshot, StockTickerPerformancePeriod, WeatherLocation, WeatherSnapshot, WeatherTemperatureUnit } from '@pixopen/core';
+import type { AppTemplate, DataSourceMeta, Frame, Project, SavedDevice, SpotifyNowPlayingSnapshot, StockQuoteSnapshot, StockTickerPerformancePeriod, WeatherLocation, WeatherSnapshot, WeatherTemperatureUnit } from '@pixopen/core';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -31,6 +31,12 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, name }),
       }),
+    remove: (id: string) =>
+      request<{ ok: boolean; devices: SavedDevice[] }>(`/api/devices/id/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    clear: () =>
+      request<{ ok: boolean; devices: SavedDevice[] }>('/api/devices', { method: 'DELETE' }),
     testPattern: (ip: string) =>
       request<{ ok: boolean }>(`/api/devices/${encodeURIComponent(ip)}/test-pattern`, { method: 'POST' }),
     ping: (ip: string) =>
@@ -167,5 +173,39 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location, temperatureUnit }),
       }),
+  },
+  spotify: {
+    status: () =>
+      request<{
+        configured: boolean;
+        hasRefreshToken: boolean;
+        clientIdSet: boolean;
+        clientSecretSet: boolean;
+        clientId: string;
+        redirectUri: string;
+        source: 'studio' | 'env' | 'mixed' | 'none';
+      }>('/api/spotify/status'),
+    startAuth: (credentials: { clientId: string; clientSecret: string }) =>
+      request<{ authorizeUrl: string; redirectUri: string }>('/api/spotify/auth/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      }),
+    saveCredentials: (credentials: { clientId: string; clientSecret: string; refreshToken: string }) =>
+      request<{
+        configured: boolean;
+        hasRefreshToken: boolean;
+        clientIdSet: boolean;
+        clientSecretSet: boolean;
+        clientId: string;
+        redirectUri: string;
+        source: 'studio' | 'env' | 'mixed' | 'none';
+      }>('/api/spotify/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      }),
+    nowPlaying: () =>
+      request<SpotifyNowPlayingSnapshot>('/api/spotify/now-playing', { method: 'POST' }),
   },
 };

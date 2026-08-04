@@ -2,6 +2,8 @@ import { CANVAS_SIZE, type DvdScreensaverConfig } from '@pixopen/core';
 import { DVD_COLOR_CYCLE, dvdLogoSize } from './logo.js';
 
 const PHYSICS_STEP_MS = 16;
+/** Safety cap — callers must not advance more than this in one step. */
+const MAX_SINGLE_ADVANCE_MS = 3_000;
 /** Rewind-from-checkpoint cost is bounded by this interval. */
 const CHECKPOINT_INTERVAL_MS = 1000;
 const MAX_CHECKPOINTS = 32;
@@ -236,7 +238,8 @@ export class DvdSimulator {
   advanceBy(deltaMs: number): DvdSimState {
     if (deltaMs <= 0) return this.getState();
 
-    const targetElapsedMs = this.elapsedMs + deltaMs;
+    const delta = Math.min(deltaMs, MAX_SINGLE_ADVANCE_MS);
+    const targetElapsedMs = this.elapsedMs + delta;
     while (this.elapsedMs < targetElapsedMs) {
       const stepMs = Math.min(PHYSICS_STEP_MS, targetElapsedMs - this.elapsedMs);
       this.physicsStep(stepMs);

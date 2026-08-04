@@ -14,6 +14,7 @@ const TEMPLATE_ICON: Record<string, IconName> = {
   'stock-ticker': 'liveSign',
   'weather-frame': 'weatherFrame',
   'dvd-screensaver': 'dvdScreensaver',
+  'spotify-now-playing': 'spotifyNowPlaying',
   'blank-image-frame': 'imageFrame',
   'blank-animator': 'animator',
 };

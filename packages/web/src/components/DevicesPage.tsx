@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import type { SavedDevice } from '@pixopen/core';
 import { api } from '../lib/api';
 import { DevicePicker } from './DevicePicker';
+import { ConfirmModal } from './ConfirmModal';
 import { deviceDisplayLabel } from '../lib/deviceLabel';
 import { useToast } from './Toast';
 
 export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSelect: (ip: string) => void }) {
   const [devices, setDevices] = useState<SavedDevice[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const { pushToast } = useToast();
 
   const refresh = async () => {
@@ -14,6 +17,37 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
   };
 
   useEffect(() => { void refresh(); }, []);
+
+  const removeDevice = async (device: SavedDevice) => {
+    setBusy(true);
+    try {
+      const { devices: next } = await api.devices.remove(device.id);
+      setDevices(next);
+      if (selectedIp === device.ip) {
+        onSelect(next.length === 1 ? next[0].ip : '');
+      }
+      pushToast(`Removed ${deviceDisplayLabel([device], device.ip) || device.ip}`);
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : 'Remove failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const clearDevices = async () => {
+    setBusy(true);
+    try {
+      const { devices: next } = await api.devices.clear();
+      setDevices(next);
+      onSelect('');
+      setConfirmClear(false);
+      pushToast('Cleared saved devices');
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : 'Clear failed');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="grid gap-5">
@@ -32,6 +66,9 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
               idPrefix="devices-page"
               selectedIp={selectedIp}
               onSelect={onSelect}
+              devices={devices}
+              onDevicesChange={setDevices}
+              showSavedList={false}
             />
             {selectedIp ? (
               <button
@@ -57,7 +94,19 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
 
         <section className="card">
           <div className="card-body">
-            <h3 className="font-semibold mb-3">Saved devices</h3>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h3 className="font-semibold m-0">Saved devices</h3>
+              {devices.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm text-muted"
+                  disabled={busy}
+                  onClick={() => setConfirmClear(true)}
+                >
+                  Clear all
+                </button>
+              ) : null}
+            </div>
             {devices.length === 0 ? (
               <p className="text-sm text-muted">No devices saved yet — discover one above.</p>
             ) : (
@@ -80,6 +129,7 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
                     <button
                       type="button"
                       className="btn btn-ghost btn-sm rounded-none border-0 border-l border-border"
+                      disabled={busy}
                       onClick={async () => {
                         pushToast(`Sending test pattern to ${d.ip}…`);
                         try {
@@ -92,6 +142,16 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
                     >
                       Test pattern
                     </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm rounded-none border-0 border-l border-border text-muted"
+                      disabled={busy}
+                      aria-label={`Remove ${d.name}`}
+                      title="Remove"
+                      onClick={() => void removeDevice(d)}
+                    >
+                      Remove
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -99,6 +159,19 @@ export function DevicesPage({ selectedIp, onSelect }: { selectedIp: string; onSe
           </div>
         </section>
       </div>
+
+      {confirmClear ? (
+        <ConfirmModal
+          title="Clear saved devices?"
+          tone="danger"
+          confirmLabel="Clear all"
+          busy={busy}
+          onConfirm={() => void clearDevices()}
+          onCancel={() => setConfirmClear(false)}
+        >
+          This removes every saved Pixoo from this computer. Search the network again to rediscover devices.
+        </ConfirmModal>
+      ) : null}
     </div>
   );
 }

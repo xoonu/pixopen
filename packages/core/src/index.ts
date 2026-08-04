@@ -36,6 +36,7 @@ import {
   DEFAULT_STOCK_TICKER_CONFIG,
   DEFAULT_WEATHER_FRAME_CONFIG,
   DEFAULT_DVD_SCREENSAVER_CONFIG,
+  DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG,
   createDarkFramePixels,
   createBlackFramePixels,
   getAppTemplate,
@@ -44,10 +45,12 @@ import {
   normalizeStockTickerAppConfig,
   normalizeWeatherFrameAppConfig,
   normalizeDvdScreensaverAppConfig,
+  normalizeSpotifyNowPlayingAppConfig,
   shouldUseFlipNoteUi,
   shouldUseStockTickerUi,
   shouldUseWeatherUi,
   shouldUseDvdScreensaverUi,
+  shouldUseSpotifyNowPlayingUi,
 } from './apps.js';
 
 export type ProjectType = 'image-frame' | 'animator' | 'live-sign';
@@ -197,6 +200,10 @@ export function createProjectFromTemplate(
     project.appConfig = { ...DEFAULT_DVD_SCREENSAVER_CONFIG };
     project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createBlackFramePixels() }];
     project.liveAreas = [];
+  } else if (resolvedTemplateId === 'spotify-now-playing') {
+    project.appConfig = { ...DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG };
+    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createBlackFramePixels() }];
+    project.liveAreas = [];
   } else if (template.type === 'image-frame') {
     project.appConfig = { ...DEFAULT_IMAGE_FRAME_CONFIG };
   }
@@ -218,7 +225,10 @@ export function normalizeProject(raw: Project): Project {
   const useDvd = !useStockTicker && !useWeather && shouldUseDvdScreensaverUi({
     templateId: raw.templateId,
   });
-  const useFlipNote = !useStockTicker && !useWeather && !useDvd && shouldUseFlipNoteUi({
+  const useSpotify = !useStockTicker && !useWeather && !useDvd && shouldUseSpotifyNowPlayingUi({
+    templateId: raw.templateId,
+  });
+  const useFlipNote = !useStockTicker && !useWeather && !useDvd && !useSpotify && shouldUseFlipNoteUi({
     templateId: raw.templateId,
     type: raw.type as string,
     name: raw.name,
@@ -237,6 +247,9 @@ export function normalizeProject(raw: Project): Project {
   } else if (useDvd) {
     templateId = 'dvd-screensaver';
     appConfig = { ...rawConfig, ...normalizeDvdScreensaverAppConfig(rawConfig) };
+  } else if (useSpotify) {
+    templateId = 'spotify-now-playing';
+    appConfig = { ...rawConfig, ...normalizeSpotifyNowPlayingAppConfig(rawConfig) };
   } else if (useFlipNote) {
     templateId = 'flip-note';
     appConfig = { ...rawConfig, ...normalizeFlipNoteAppConfig(rawConfig) };
@@ -247,11 +260,11 @@ export function normalizeProject(raw: Project): Project {
   }
 
   let frames = raw.frames?.length ? raw.frames : [createEmptyFrame()];
-  if ((useFlipNote || useStockTicker || useWeather || useDvd) && frames.length === 1 && isBlankFrame(frames[0])) {
+  if ((useFlipNote || useStockTicker || useWeather || useDvd || useSpotify) && frames.length === 1 && isBlankFrame(frames[0])) {
     frames = [{
       width: CANVAS_SIZE,
       height: CANVAS_SIZE,
-      pixels: useDvd ? createBlackFramePixels() : createDarkFramePixels(),
+      pixels: useDvd || useSpotify ? createBlackFramePixels() : createDarkFramePixels(),
     }];
   }
 
@@ -261,7 +274,7 @@ export function normalizeProject(raw: Project): Project {
     templateId,
     appConfig,
     frames,
-    liveAreas: useFlipNote || useStockTicker || useWeather || useDvd ? [] : (raw.liveAreas ?? []),
+    liveAreas: useFlipNote || useStockTicker || useWeather || useDvd || useSpotify ? [] : (raw.liveAreas ?? []),
   };
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { ControlSection, Field } from './ControlSection';
 import { ScrollRegion } from './ScrollRegion';
@@ -14,6 +14,8 @@ import { WeatherPanel } from './WeatherPanel';
 import { WeatherStudio } from './WeatherStudio';
 import { DvdPanel } from './DvdPanel';
 import { DvdStudio } from './DvdStudio';
+import { SpotifyPanel } from './SpotifyPanel';
+import { SpotifyStudio } from './SpotifyStudio';
 import { StudioChrome } from './StudioChrome';
 import { SequencePreview } from './SequencePreview';
 import { frameToImageData, useStudio } from '../studio/StudioProvider';
@@ -114,9 +116,10 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
   const isStockTicker = shouldUseStockTickerUi(project);
   const isWeather = shouldUseWeatherUi(project);
   const isDvd = shouldUseDvdScreensaverUi(project);
+  const isSpotify = shouldUseSpotifyNowPlayingUi(project);
   const isImageFrame = project.type === 'image-frame';
   const isAnimator = project.type === 'animator';
-  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather && !isDvd;
+  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather && !isDvd && !isSpotify;
   const showToolbar = drawingTools.length > 0;
   const imageMode = String(project.appConfig?.mode ?? 'slideshow') as 'single' | 'slideshow';
 
@@ -203,6 +206,20 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
         </aside>
         <main className="studio-main-panel min-w-0">
           <DvdStudio project={project} onChange={handleDvdChange} />
+        </main>
+      </div>
+    );
+  }
+
+  if (isSpotify) {
+    return (
+      <div className="studio-page studio-workspace-layout">
+        <aside className="studio-sidebar" aria-label="Project sidebar">
+          <StudioChrome deviceIp={deviceIp} />
+          <SpotifyPanel project={project} />
+        </aside>
+        <main className="studio-main-panel min-w-0">
+          <SpotifyStudio project={project} />
         </main>
       </div>
     );

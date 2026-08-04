@@ -171,6 +171,25 @@ export const DEFAULT_DVD_SCREENSAVER_CONFIG: DvdScreensaverConfig = {
   seed: 42_069,
 };
 
+/** Zero-config once Spotify credentials are saved in the project UI. */
+export type SpotifyNowPlayingConfig = Record<string, never>;
+
+export type SpotifyPlaybackSource = 'playing' | 'recent' | 'logo' | 'error';
+
+export type SpotifyNowPlayingSnapshot = {
+  source: SpotifyPlaybackSource;
+  trackName?: string;
+  artistName?: string;
+  albumName?: string;
+  imageUrl?: string | null;
+  /** Full 64×64 RGBA when art/logo is available. */
+  pixels: number[];
+  fetchedAt: string;
+  error?: string;
+};
+
+export const DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG: SpotifyNowPlayingConfig = {};
+
 export const MAX_STOCK_TICKER_SYMBOLS = 32;
 
 export const DEFAULT_STOCK_TICKER_SYMBOLS: StockTickerSymbol[] = [
@@ -295,6 +314,14 @@ export const APP_TEMPLATES: AppTemplate[] = [
     description: 'The classic bouncing DVD logo — angular paths, edge bounces, corner-hit drama.',
     icon: '💿',
   },
+  {
+    id: 'spotify-now-playing',
+    name: 'Spotify',
+    type: 'live-sign',
+    category: 'example',
+    description: 'Full-bleed album art for what you’re listening to on Spotify (or your last played track).',
+    icon: '🎧',
+  },
 ];
 
 export function getAppTemplate(id: string): AppTemplate | undefined {
@@ -352,6 +379,12 @@ export function shouldUseDvdScreensaverUi(project: {
   return project.templateId === 'dvd-screensaver';
 }
 
+export function shouldUseSpotifyNowPlayingUi(project: {
+  templateId?: string | null;
+}): boolean {
+  return project.templateId === 'spotify-now-playing';
+}
+
 export function shouldUseFlipNoteUi(project: {
   templateId?: string | null;
   type?: string;
@@ -361,6 +394,7 @@ export function shouldUseFlipNoteUi(project: {
   if (shouldUseStockTickerUi(project)) return false;
   if (shouldUseWeatherUi(project)) return false;
   if (shouldUseDvdScreensaverUi(project)) return false;
+  if (shouldUseSpotifyNowPlayingUi(project)) return false;
   if (project.templateId && LEGACY_FLIP_NOTE_TEMPLATE_IDS.has(project.templateId)) return true;
   if (Array.isArray(project.appConfig?.messages)) return true;
   const type = migrateProjectType(project.type ?? 'animator');
@@ -611,6 +645,12 @@ export function normalizeDvdScreensaverAppConfig(
   const seedRaw = Number(raw.seed ?? DEFAULT_DVD_SCREENSAVER_CONFIG.seed);
   const seed = Number.isFinite(seedRaw) ? Math.floor(seedRaw) : DEFAULT_DVD_SCREENSAVER_CONFIG.seed;
   return { speedPxPerSec, smoothness, logoScale, cornerSensitivity, seed };
+}
+
+export function normalizeSpotifyNowPlayingAppConfig(
+  _appConfig: Record<string, unknown> | undefined,
+): SpotifyNowPlayingConfig {
+  return { ...DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG };
 }
 
 export function createBlackFramePixels(): number[] {

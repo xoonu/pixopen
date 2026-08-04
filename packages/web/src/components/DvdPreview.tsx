@@ -15,6 +15,9 @@ type Props = {
   onCornerHitsChange?: (hits: number) => void;
 };
 
+const PREVIEW_SLEEP_GAP_MS = 5_000;
+const PREVIEW_MAX_ADVANCE_MS = 100;
+
 function putFramePixels(ctx: CanvasRenderingContext2D, pixels: number[]) {
   const data = new Uint8ClampedArray(pixels);
   try {
@@ -39,6 +42,7 @@ export function DvdPreview({
   const onCornerHitsRef = useRef(onCornerHitsChange);
   const simRef = useRef<DvdSimulator | null>(null);
   const simKeyRef = useRef('');
+  const lastFrameAtRef = useRef(0);
 
   configRef.current = appConfig;
   playingRef.current = playing;
@@ -50,12 +54,11 @@ export function DvdPreview({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const start = Date.now();
     let raf = 0;
     let lastHits = -1;
 
     const draw = () => {
-      const elapsed = playingRef.current ? Date.now() - start : 0;
+      const now = Date.now();
       const config = parseDvdScreensaverConfig(configRef.current);
       const simConfig = dvdEffectiveSimConfig(config);
       const simKey = `${simConfig.seed}|${simConfig.speedPxPerSec}|${simConfig.logoScale}|${simConfig.cornerSensitivity}`;
@@ -63,9 +66,16 @@ export function DvdPreview({
       if (!simRef.current || simKeyRef.current !== simKey) {
         simRef.current = new DvdSimulator(simConfig);
         simKeyRef.current = simKey;
+        lastFrameAtRef.current = 0;
       }
 
-      simRef.current.advanceTo(elapsed);
+      if (playingRef.current) {
+        const gap = lastFrameAtRef.current > 0 ? now - lastFrameAtRef.current : 16;
+        lastFrameAtRef.current = now;
+        const delta = gap > PREVIEW_SLEEP_GAP_MS ? 16 : Math.min(Math.max(gap, 16), PREVIEW_MAX_ADVANCE_MS);
+        simRef.current.advanceBy(delta);
+      }
+
       const frame = renderDvdScreensaverFromSimulator(config, simRef.current);
       putFramePixels(ctx, frame.pixels);
 

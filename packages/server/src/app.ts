@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { existsSync } from 'node:fs';
@@ -7,6 +7,8 @@ import {
   createProject,
   createProjectFromTemplate,
   defaultProjectName,
+  generateUniqueProjectName,
+  getAppTemplate,
   isProjectNameAvailable,
   migrateProjectType,
   normalizeProjectName,
@@ -40,6 +42,14 @@ import {
 import { getRuntimeStatus, startRuntime, stopRuntime, syncRuntimeProject } from './runtime.js';
 import { fetchStockQuotes, marketDataStatus } from './marketData/quotes.js';
 import { fetchWeatherSnapshot, geocodeLocation } from './weatherData/index.js';
+import {
+  exchangeSpotifyAuthCode,
+  fetchSpotifyNowPlaying,
+  saveSpotifyAppCredentials,
+  saveSpotifyCredentials,
+  spotifyAuthStatus,
+  spotifyRedirectUri,
+} from './spotifyData/index.js';
 import type { WeatherLocation, WeatherTemperatureUnit } from '@pixopen/core';
 
 export function createApp(options?: { webDist?: string }) {
@@ -60,23 +70,58 @@ export function createApp(options?: { webDist?: string }) {
       if (idx >= 0) merged[idx] = { ...merged[idx], ...d, lastSeenAt: d.lastSeenAt };
       else merged.push(d);
     }
-    await saveDevices(merged);
-    return c.json({ devices: merged, discovered });
+    // One row per IP; prefer the discovered device when IPs collide.
+    const discoveredIds = new Set(discovered.map((d) => d.id));
+    const byIp = new Map<string, (typeof merged)[number]>();
+    for (const m of merged) {
+      const prev = byIp.get(m.ip);
+      if (!prev || (discoveredIds.has(m.id) && !discoveredIds.has(prev.id))) byIp.set(m.ip, m);
+    }
+    const next = [...byIp.values()];
+    await saveDevices(next);
+    return c.json({ devices: next, discovered });
   });
 
   app.post('/api/devices', async (c) => {
     const body = await c.req.json<{ name?: string; ip: string }>();
+    const ip = body.ip?.trim();
+    if (!ip) return c.json({ error: 'IP is required' }, 400);
     const devices = await loadDevices();
+    const existingIdx = devices.findIndex((d) => d.ip === ip);
+    if (existingIdx >= 0) {
+      const updated = {
+        ...devices[existingIdx],
+        name: body.name?.trim() || devices[existingIdx].name,
+        lastSeenAt: new Date().toISOString(),
+      };
+      devices[existingIdx] = updated;
+      await saveDevices(devices);
+      return c.json(updated);
+    }
     const device = {
       id: crypto.randomUUID(),
-      name: body.name ?? 'Pixoo',
-      ip: body.ip,
+      name: body.name?.trim() || 'Pixoo',
+      ip,
       source: 'manual' as const,
       lastSeenAt: new Date().toISOString(),
     };
     devices.push(device);
     await saveDevices(devices);
     return c.json(device, 201);
+  });
+
+  app.delete('/api/devices', async (c) => {
+    await saveDevices([]);
+    return c.json({ ok: true, devices: [] as Awaited<ReturnType<typeof loadDevices>> });
+  });
+
+  app.delete('/api/devices/id/:id', async (c) => {
+    const id = c.req.param('id');
+    const devices = await loadDevices();
+    const next = devices.filter((d) => d.id !== id);
+    if (next.length === devices.length) return c.json({ error: 'Device not found' }, 404);
+    await saveDevices(next);
+    return c.json({ ok: true, devices: next });
   });
 
   app.post('/api/devices/:ip/ping', async (c) => {
@@ -127,17 +172,17 @@ export function createApp(options?: { webDist?: string }) {
 
     let project;
     if (body.templateId) {
+      const resolvedTemplateId = body.templateId === 'vesta-note' ? 'flip-note' : body.templateId;
+      const template = getAppTemplate(resolvedTemplateId);
+      if (!template) return c.json({ error: `Unknown app template: ${body.templateId}` }, 400);
       const name = body.name
         ? normalizeProjectName(body.name)
-        : defaultProjectName(
-            migrateProjectType(body.type ?? 'animator'),
-            existingNames,
-          );
+        : generateUniqueProjectName(existingNames, template.name);
       if (!name) return c.json({ error: 'Project name is required' }, 400);
       if (!isProjectNameAvailable(existing, name)) {
         return c.json({ error: `A project named "${name}" already exists` }, 409);
       }
-      project = createProjectFromTemplate(body.templateId, name, existingNames);
+      project = createProjectFromTemplate(resolvedTemplateId, name, existingNames);
     } else {
       const type = migrateProjectType(body.type ?? 'animator');
       const name = body.name
@@ -313,6 +358,77 @@ export function createApp(options?: { webDist?: string }) {
       return c.json({ error: message }, 502);
     }
   });
+
+  app.get('/api/spotify/status', async (c) => c.json(await spotifyAuthStatus()));
+
+  app.post('/api/spotify/auth/start', async (c) => {
+    const body = await c.req.json<{ clientId?: string; clientSecret?: string }>();
+    try {
+      const result = await saveSpotifyAppCredentials({
+        clientId: String(body.clientId ?? ''),
+        clientSecret: String(body.clientSecret ?? ''),
+      });
+      return c.json(result);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not start Spotify login';
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  async function handleSpotifyCallback(c: Context) {
+    const error = c.req.query('error');
+    const code = c.req.query('code');
+    const redirectHome = (query: string) => c.redirect(`/?${query}`, 302);
+    if (error) {
+      return redirectHome(`spotify=error&message=${encodeURIComponent(error)}`);
+    }
+    if (!code?.trim()) {
+      return redirectHome(`spotify=error&message=${encodeURIComponent('Missing authorization code')}`);
+    }
+    try {
+      await exchangeSpotifyAuthCode(code);
+      return redirectHome('spotify=connected');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Spotify authorization failed';
+      return redirectHome(`spotify=error&message=${encodeURIComponent(message)}`);
+    }
+  }
+
+  // Default redirect URI is /callback — keep /api/spotify/callback as an alias.
+  app.get('/callback', (c) => handleSpotifyCallback(c));
+  app.get('/api/spotify/callback', (c) => handleSpotifyCallback(c));
+
+  app.post('/api/spotify/credentials', async (c) => {
+    const body = await c.req.json<{
+      clientId?: string;
+      clientSecret?: string;
+      refreshToken?: string;
+    }>();
+    try {
+      const status = await saveSpotifyCredentials({
+        clientId: String(body.clientId ?? ''),
+        clientSecret: String(body.clientSecret ?? ''),
+        refreshToken: String(body.refreshToken ?? ''),
+      });
+      return c.json(status);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not save Spotify credentials';
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  app.post('/api/spotify/now-playing', async (c) => {
+    try {
+      const snapshot = await fetchSpotifyNowPlaying();
+      return c.json(snapshot);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Spotify fetch failed';
+      return c.json({ error: message }, 502);
+    }
+  });
+
+  // Expose redirect URI for docs/UI copy (no secrets).
+  app.get('/api/spotify/redirect-uri', (c) => c.json({ redirectUri: spotifyRedirectUri() }));
 
   app.post('/api/runtime/sync', async (c) => {
     const body = await c.req.json<{ projectId: string; appConfig: Record<string, unknown> }>();

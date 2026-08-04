@@ -1,13 +1,15 @@
-import { shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, type Frame, type LiveArea, type Project } from '@pixopen/core';
+import { shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Project } from '@pixopen/core';
 import type { DataSourceResult } from '@pixopen/datasources';
 import {
   compositeFrame,
+  createSpotifyLogoPixels,
   demoQuotesForConfig,
   demoWeatherSnapshot,
   parseFlipNoteConfig,
   parseStockTickerConfig,
   parseWeatherFrameConfig,
   renderFlipNotePreview,
+  renderSpotifyNowPlayingPreview,
   renderStockTickerPreview,
   renderWeatherPreview,
   renderDvdScreensaverPreview,
@@ -76,6 +78,14 @@ export function renderProjectCardPreview(project: Project): Frame {
 
   if (shouldUseDvdScreensaverUi(project)) {
     return renderDvdScreensaverPreview(project.appConfig, 0);
+  }
+
+  if (shouldUseSpotifyNowPlayingUi(project)) {
+    return renderSpotifyNowPlayingPreview(project.appConfig, {
+      source: 'logo',
+      pixels: createSpotifyLogoPixels(),
+      fetchedAt: new Date().toISOString(),
+    });
   }
 
   if (project.type === 'live-sign') {
