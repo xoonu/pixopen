@@ -6,6 +6,7 @@ import { fetchAlbumArtPixels } from './art.js';
 type SpotifyImage = { url?: string; height?: number; width?: number };
 
 type SpotifyTrack = {
+  type?: string;
   name?: string;
   artists?: Array<{ name?: string }>;
   album?: {
@@ -14,9 +15,20 @@ type SpotifyTrack = {
   };
 };
 
+type SpotifyEpisode = {
+  type?: string;
+  name?: string;
+  images?: SpotifyImage[];
+  show?: {
+    name?: string;
+    publisher?: string;
+    images?: SpotifyImage[];
+  };
+};
+
 type CurrentlyPlayingResponse = {
   is_playing?: boolean;
-  item?: SpotifyTrack | null;
+  item?: (SpotifyTrack | SpotifyEpisode) | null;
   currently_playing_type?: string;
 };
 
@@ -24,25 +36,54 @@ type RecentlyPlayedResponse = {
   items?: Array<{ track?: SpotifyTrack | null }>;
 };
 
-function pickLargestImageUrl(images: SpotifyImage[] | undefined): string | null {
+/** Prefer ~64px art for the Pixoo — Spotify usually ships 640 / 300 / 64. */
+function pickDisplayImageUrl(images: SpotifyImage[] | undefined): string | null {
   if (!images?.length) return null;
-  const sorted = [...images].sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
-  const url = sorted[0]?.url?.trim();
-  return url || null;
+  const scored = images
+    .filter((img) => img.url?.trim())
+    .map((img) => {
+      const size = Math.max(img.width ?? 0, img.height ?? 0);
+      return { url: img.url!.trim(), size };
+    });
+  if (!scored.length) return null;
+
+  // Exact 64 if present, else smallest image that is still >= 64, else largest available.
+  const exact = scored.find((img) => img.size === 64);
+  if (exact) return exact.url;
+  const bigEnough = scored
+    .filter((img) => img.size >= 64)
+    .sort((a, b) => a.size - b.size);
+  if (bigEnough[0]) return bigEnough[0].url;
+  return scored.sort((a, b) => b.size - a.size)[0]!.url;
 }
 
-function trackMeta(track: SpotifyTrack | null | undefined): {
+function isEpisode(item: SpotifyTrack | SpotifyEpisode): item is SpotifyEpisode {
+  return item.type === 'episode' || (!('album' in item) && 'show' in item);
+}
+
+function itemMeta(item: SpotifyTrack | SpotifyEpisode | null | undefined): {
   trackName?: string;
   artistName?: string;
   albumName?: string;
   imageUrl: string | null;
 } {
-  if (!track) return { imageUrl: null };
+  if (!item) return { imageUrl: null };
+
+  if (isEpisode(item)) {
+    return {
+      trackName: item.name?.trim() || undefined,
+      artistName: item.show?.publisher?.trim() || item.show?.name?.trim() || undefined,
+      albumName: item.show?.name?.trim() || undefined,
+      // Episode-specific art first; fall back to show cover.
+      imageUrl: pickDisplayImageUrl(item.images) || pickDisplayImageUrl(item.show?.images),
+    };
+  }
+
   return {
-    trackName: track.name?.trim() || undefined,
-    artistName: track.artists?.map((a) => a.name?.trim()).filter(Boolean).join(', ') || undefined,
-    albumName: track.album?.name?.trim() || undefined,
-    imageUrl: pickLargestImageUrl(track.album?.images),
+    trackName: item.name?.trim() || undefined,
+    artistName: item.artists?.map((a) => a.name?.trim()).filter(Boolean).join(', ') || undefined,
+    albumName: item.album?.name?.trim() || undefined,
+    imageUrl: pickDisplayImageUrl(item.album?.images),
   };
 }
 
@@ -59,11 +100,11 @@ async function spotifyGet<T>(path: string, accessToken: string): Promise<{ statu
   return { status: res.status, json: (await res.json()) as T };
 }
 
-async function snapshotFromTrack(
-  track: SpotifyTrack,
+async function snapshotFromItem(
+  item: SpotifyTrack | SpotifyEpisode,
   source: Extract<SpotifyPlaybackSource, 'playing' | 'recent'>,
 ): Promise<SpotifyNowPlayingSnapshot> {
-  const meta = trackMeta(track);
+  const meta = itemMeta(item);
   const fetchedAt = new Date().toISOString();
   if (!meta.imageUrl) {
     return {
@@ -103,19 +144,20 @@ export async function fetchSpotifyNowPlaying(): Promise<SpotifyNowPlayingSnapsho
 
   try {
     const accessToken = await getSpotifyAccessToken();
-    const current = await spotifyGet<CurrentlyPlayingResponse>('/me/player/currently-playing', accessToken);
+    // additional_types=episode is required for podcasts — otherwise Spotify omits them.
+    const current = await spotifyGet<CurrentlyPlayingResponse>(
+      '/me/player/currently-playing?additional_types=episode',
+      accessToken,
+    );
     const item = current.json?.item;
-    if (current.status !== 204 && item && current.json?.currently_playing_type !== 'episode') {
-      // Prefer album art whenever Spotify reports a track item (playing or paused).
-      if (item.album?.images?.length || item.name) {
-        return await snapshotFromTrack(item, 'playing');
-      }
+    if (current.status !== 204 && item) {
+      return await snapshotFromItem(item, 'playing');
     }
 
     const recent = await spotifyGet<RecentlyPlayedResponse>('/me/player/recently-played?limit=1', accessToken);
     const recentTrack = recent.json?.items?.[0]?.track;
     if (recentTrack) {
-      return await snapshotFromTrack(recentTrack, 'recent');
+      return await snapshotFromItem(recentTrack, 'recent');
     }
 
     return logoSnapshot();

@@ -18,8 +18,9 @@ export async function fetchAlbumArtPixels(imageUrl: string): Promise<number[]> {
   const res = await fetch(imageUrl, { signal: AbortSignal.timeout(12_000) });
   if (!res.ok) throw new Error(`Album art fetch failed (${res.status})`);
   const arrayBuffer = await res.arrayBuffer();
+  // Lanczos looks better for photo/cover art than nearest-neighbor on a 64×64 matrix.
   const resized = await sharp(Buffer.from(arrayBuffer))
-    .resize(CANVAS_SIZE, CANVAS_SIZE, { fit: 'cover', kernel: sharp.kernel.nearest })
+    .resize(CANVAS_SIZE, CANVAS_SIZE, { fit: 'cover', kernel: sharp.kernel.lanczos3 })
     .ensureAlpha()
     .raw()
     .toBuffer();

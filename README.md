@@ -86,7 +86,7 @@ Use **Run on Pixoo** to stream live frames. Pixoo accepts updates at roughly **2
 
 ## Spotify
 
-The **Spotify** live frame shows full-bleed album artwork for the track currently playing on your account. When nothing is playing, it uses your most recently played album; if that isn’t available either, it shows the Spotify logo.
+The **Spotify** live frame shows full-bleed artwork for the track or podcast episode currently playing on your account (preferring Spotify’s ~64×64 cover when available). When nothing is playing, it uses your most recently played track; if that isn’t available either, it shows the Spotify logo.
 
 ### Configure in the studio
 
