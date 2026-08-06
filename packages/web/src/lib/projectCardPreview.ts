@@ -1,4 +1,4 @@
-import { shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Project } from '@pixopen/core';
+import { shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Project } from '@pixopen/core';
 import type { DataSourceResult } from '@pixopen/datasources';
 import {
   compositeFrame,
@@ -8,6 +8,7 @@ import {
   parseFlipNoteConfig,
   parseStockTickerConfig,
   parseWeatherFrameConfig,
+  renderAiMusePreview,
   renderFlipNotePreview,
   renderSpotifyNowPlayingPreview,
   renderStockTickerPreview,
@@ -84,6 +85,16 @@ export function renderProjectCardPreview(project: Project): Frame {
     return renderSpotifyNowPlayingPreview(project.appConfig, {
       source: 'logo',
       pixels: createSpotifyLogoPixels(),
+      fetchedAt: new Date().toISOString(),
+    });
+  }
+
+  if (shouldUseAiMuseUi(project)) {
+    return renderAiMusePreview(project.appConfig, {
+      pixels: base.pixels,
+      poolSize: 0,
+      candidateCount: 0,
+      matchCount: 0,
       fetchedAt: new Date().toISOString(),
     });
   }

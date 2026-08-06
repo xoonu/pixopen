@@ -5,6 +5,7 @@ import {
   type Project,
 } from '@pixopen/core';
 import { Field } from './ControlSection';
+import { NumberSlider } from './NumberSlider';
 import { FlipNotePreview } from './FlipNotePreview';
 
 type Props = {
@@ -144,23 +145,25 @@ export function FlipNoteStudio({ project, onChange }: Props) {
 
       <section className="flip-note-timing-panel">
         <Field label="Display each message (seconds)" htmlFor="flip-note-hold-sec">
-          <input
+          <NumberSlider
             id="flip-note-hold-sec"
-            type="number"
             min={0.5}
+            max={15}
             step={0.5}
             value={config.holdMs / 1000}
-            onChange={(e) => updateTiming({ holdMs: Math.max(500, Number(e.target.value) * 1000) })}
+            formatValue={(v) => `${v}s`}
+            onChange={(sec) => updateTiming({ holdMs: Math.round(sec * 1000) })}
           />
         </Field>
         <Field label="Refresh animation (seconds)" htmlFor="flip-note-flip-sec">
-          <input
+          <NumberSlider
             id="flip-note-flip-sec"
-            type="number"
             min={0.1}
+            max={3}
             step={0.05}
             value={config.flipMs / 1000}
-            onChange={(e) => updateTiming({ flipMs: Math.max(100, Number(e.target.value) * 1000) })}
+            formatValue={(v) => `${v.toFixed(2)}s`}
+            onChange={(sec) => updateTiming({ flipMs: Math.round(sec * 1000) })}
           />
         </Field>
       </section>

@@ -190,6 +190,193 @@ export type SpotifyNowPlayingSnapshot = {
 
 export const DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG: SpotifyNowPlayingConfig = {};
 
+export type AiMuseEthnicity =
+  | 'any'
+  | 'east-asian'
+  | 'south-asian'
+  | 'black'
+  | 'white'
+  | 'latina'
+  | 'middle-eastern'
+  | 'mixed';
+
+export type AiMuseEyeColor =
+  | 'any'
+  | 'brown'
+  | 'blue'
+  | 'green'
+  | 'hazel'
+  | 'gray'
+  | 'amber';
+
+export type AiMuseHairColor =
+  | 'any'
+  | 'black'
+  | 'brown'
+  | 'blonde'
+  | 'red'
+  | 'auburn'
+  | 'gray';
+
+export type AiMuseHairLength = 'any' | 'short' | 'medium' | 'long';
+
+export type AiMuseSetting =
+  | 'cafe'
+  | 'beach'
+  | 'city'
+  | 'studio'
+  | 'forest'
+  | 'rooftop'
+  | 'garden'
+  | 'library';
+
+/** Lightweight playlist entry persisted in project appConfig. */
+export type AiMuseFeedItem = {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
+};
+
+export type AiMuseSources = {
+  /** Live Civitai photoreal galleries. */
+  civitai: boolean;
+  /** Local files in data/ai-muse/library. */
+  library: boolean;
+};
+
+export type AiMuseConfig = {
+  ageMin: number;
+  ageMax: number;
+  /** Empty = any ethnicity. */
+  ethnicities: Array<Exclude<AiMuseEthnicity, 'any'>>;
+  eyeColor: AiMuseEyeColor;
+  hairColor: AiMuseHairColor;
+  hairLength: AiMuseHairLength;
+  settings: AiMuseSetting[];
+  refreshSeconds: number;
+  /** How many live candidates to pull when filling / refreshing the feed. */
+  poolSize: number;
+  /** Which candidate sources to use when filling the feed. */
+  sources: AiMuseSources;
+  /** Curated playlist shown in settings; device cycles these in order. */
+  feed: AiMuseFeedItem[];
+  /** Removed / disliked image ids — excluded from future fills. */
+  blockedIds: string[];
+};
+
+export const MAX_AI_MUSE_FEED = 96;
+export const MAX_AI_MUSE_BLOCKED = 300;
+export const MAX_AI_MUSE_POOL = 80;
+
+export type AiMuseCatalogNsfwLevel = 'None';
+
+export type AiMuseCatalogEntry = {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
+  nsfwLevel: AiMuseCatalogNsfwLevel;
+  ethnicity?: Exclude<AiMuseEthnicity, 'any'>;
+  eyeColor?: Exclude<AiMuseEyeColor, 'any'>;
+  hairColor?: Exclude<AiMuseHairColor, 'any'>;
+  hairLength?: Exclude<AiMuseHairLength, 'any'>;
+  ageMin?: number;
+  ageMax?: number;
+  settings: AiMuseSetting[];
+  tags: string[];
+  ingestedAt: string;
+};
+
+export type AiMuseSnapshot = {
+  imageId?: string;
+  url?: string;
+  /** Full 64×64 RGBA when an image is available. */
+  pixels: number[];
+  /** Requested live candidate pool size. */
+  poolSize: number;
+  /** Candidates fetched this refresh (after quality filters). */
+  candidateCount: number;
+  /** Candidates that also matched look preferences. */
+  matchCount: number;
+  fetchedAt: string;
+  error?: string;
+};
+
+export const AI_MUSE_ETHNICITIES: AiMuseEthnicity[] = [
+  'any',
+  'east-asian',
+  'south-asian',
+  'black',
+  'white',
+  'latina',
+  'middle-eastern',
+  'mixed',
+];
+
+export const AI_MUSE_EYE_COLORS: AiMuseEyeColor[] = [
+  'any',
+  'brown',
+  'blue',
+  'green',
+  'hazel',
+  'gray',
+  'amber',
+];
+
+export const AI_MUSE_HAIR_COLORS: AiMuseHairColor[] = [
+  'any',
+  'black',
+  'brown',
+  'blonde',
+  'red',
+  'auburn',
+  'gray',
+];
+
+export const AI_MUSE_HAIR_LENGTHS: AiMuseHairLength[] = ['any', 'short', 'medium', 'long'];
+
+export const AI_MUSE_SETTINGS: AiMuseSetting[] = [
+  'cafe',
+  'beach',
+  'city',
+  'studio',
+  'forest',
+  'rooftop',
+  'garden',
+  'library',
+];
+
+export const AI_MUSE_ETHNICITY_OPTIONS: Array<Exclude<AiMuseEthnicity, 'any'>> = [
+  'east-asian',
+  'south-asian',
+  'black',
+  'white',
+  'latina',
+  'middle-eastern',
+  'mixed',
+];
+
+export const DEFAULT_AI_MUSE_SOURCES: AiMuseSources = {
+  civitai: true,
+  library: true,
+};
+
+export const DEFAULT_AI_MUSE_CONFIG: AiMuseConfig = {
+  ageMin: 18,
+  ageMax: 65,
+  ethnicities: [],
+  eyeColor: 'any',
+  hairColor: 'any',
+  hairLength: 'any',
+  settings: [],
+  refreshSeconds: 10,
+  poolSize: 36,
+  sources: { ...DEFAULT_AI_MUSE_SOURCES },
+  feed: [],
+  blockedIds: [],
+};
+
 export const MAX_STOCK_TICKER_SYMBOLS = 32;
 
 export const DEFAULT_STOCK_TICKER_SYMBOLS: StockTickerSymbol[] = [
@@ -322,6 +509,14 @@ export const APP_TEMPLATES: AppTemplate[] = [
     description: 'Full-bleed album art for what you’re listening to on Spotify (or your last played track).',
     icon: '🎧',
   },
+  {
+    id: 'ai-muse',
+    name: 'AI Muse',
+    type: 'live-sign',
+    category: 'example',
+    description: 'Cycle a feed of square SFW AI portraits matched to your look preferences.',
+    icon: '✦',
+  },
 ];
 
 export function getAppTemplate(id: string): AppTemplate | undefined {
@@ -385,6 +580,12 @@ export function shouldUseSpotifyNowPlayingUi(project: {
   return project.templateId === 'spotify-now-playing';
 }
 
+export function shouldUseAiMuseUi(project: {
+  templateId?: string | null;
+}): boolean {
+  return project.templateId === 'ai-muse';
+}
+
 export function shouldUseFlipNoteUi(project: {
   templateId?: string | null;
   type?: string;
@@ -395,6 +596,7 @@ export function shouldUseFlipNoteUi(project: {
   if (shouldUseWeatherUi(project)) return false;
   if (shouldUseDvdScreensaverUi(project)) return false;
   if (shouldUseSpotifyNowPlayingUi(project)) return false;
+  if (shouldUseAiMuseUi(project)) return false;
   if (project.templateId && LEGACY_FLIP_NOTE_TEMPLATE_IDS.has(project.templateId)) return true;
   if (Array.isArray(project.appConfig?.messages)) return true;
   const type = migrateProjectType(project.type ?? 'animator');
@@ -651,6 +853,152 @@ export function normalizeSpotifyNowPlayingAppConfig(
   _appConfig: Record<string, unknown> | undefined,
 ): SpotifyNowPlayingConfig {
   return { ...DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG };
+}
+
+function parseAiMuseEnum<T extends string>(raw: unknown, allowed: readonly T[], fallback: T): T {
+  const value = String(raw ?? fallback);
+  return (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
+}
+
+function parseAiMuseSettings(raw: unknown): AiMuseSetting[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AiMuseSetting[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const value = String(item);
+    if (!(AI_MUSE_SETTINGS as readonly string[]).includes(value) || seen.has(value)) continue;
+    seen.add(value);
+    out.push(value as AiMuseSetting);
+  }
+  return out;
+}
+
+function parseAiMuseEthnicities(raw: unknown): Array<Exclude<AiMuseEthnicity, 'any'>> {
+  const out: Array<Exclude<AiMuseEthnicity, 'any'>> = [];
+  const seen = new Set<string>();
+  const push = (value: string) => {
+    if (value === 'any' || seen.has(value)) return;
+    if (!(AI_MUSE_ETHNICITY_OPTIONS as readonly string[]).includes(value)) return;
+    seen.add(value);
+    out.push(value as Exclude<AiMuseEthnicity, 'any'>);
+  };
+
+  if (Array.isArray(raw)) {
+    for (const item of raw) push(String(item));
+  } else if (typeof raw === 'string' && raw.trim()) {
+    // Legacy single-select field.
+    push(raw.trim());
+  }
+  return out;
+}
+
+function parseAiMuseFeed(raw: unknown): AiMuseFeedItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AiMuseFeedItem[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const id = typeof row.id === 'string' ? row.id.trim() : String(row.id ?? '').trim();
+    const url = typeof row.url === 'string' ? row.url.trim() : '';
+    if (!id || !url || seen.has(id) || !isAiMuseFeedUrl(url)) continue;
+    const width = Number(row.width);
+    const height = Number(row.height);
+    seen.add(id);
+    out.push({
+      id,
+      url,
+      width: Number.isFinite(width) && width > 0 ? Math.round(width) : 1024,
+      height: Number.isFinite(height) && height > 0 ? Math.round(height) : 1024,
+    });
+    if (out.length >= MAX_AI_MUSE_FEED) break;
+  }
+  return out;
+}
+
+function parseAiMuseBlockedIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const id = typeof item === 'string' ? item.trim() : String(item ?? '').trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= MAX_AI_MUSE_BLOCKED) break;
+  }
+  return out;
+}
+
+export function normalizeAiMuseAppConfig(
+  appConfig: Record<string, unknown> | undefined,
+): AiMuseConfig {
+  const raw = appConfig ?? {};
+  const ageMinRaw = Number(raw.ageMin ?? DEFAULT_AI_MUSE_CONFIG.ageMin);
+  const ageMaxRaw = Number(raw.ageMax ?? DEFAULT_AI_MUSE_CONFIG.ageMax);
+  let ageMin = Number.isFinite(ageMinRaw) ? Math.round(ageMinRaw) : DEFAULT_AI_MUSE_CONFIG.ageMin;
+  let ageMax = Number.isFinite(ageMaxRaw) ? Math.round(ageMaxRaw) : DEFAULT_AI_MUSE_CONFIG.ageMax;
+  ageMin = Math.max(18, Math.min(65, ageMin));
+  ageMax = Math.max(18, Math.min(65, ageMax));
+  if (ageMax < ageMin) ageMax = ageMin;
+  const refreshRaw = Number(raw.refreshSeconds ?? DEFAULT_AI_MUSE_CONFIG.refreshSeconds);
+  const refreshSeconds = Number.isFinite(refreshRaw)
+    ? Math.max(5, Math.min(120, Math.round(refreshRaw)))
+    : DEFAULT_AI_MUSE_CONFIG.refreshSeconds;
+  const poolRaw = Number(raw.poolSize ?? raw.catalogMinMatches ?? DEFAULT_AI_MUSE_CONFIG.poolSize);
+  const poolSize = Number.isFinite(poolRaw)
+    ? Math.max(6, Math.min(MAX_AI_MUSE_POOL, Math.round(poolRaw)))
+    : DEFAULT_AI_MUSE_CONFIG.poolSize;
+  const rawSources =
+    raw.sources && typeof raw.sources === 'object' ? (raw.sources as Record<string, unknown>) : {};
+  const sources: AiMuseSources = {
+    civitai: rawSources.civitai !== false,
+    library: rawSources.library !== false,
+  };
+  // Keep at least one source enabled.
+  if (!sources.civitai && !sources.library) sources.civitai = true;
+  return {
+    ageMin,
+    ageMax,
+    ethnicities: parseAiMuseEthnicities(raw.ethnicities ?? raw.ethnicity),
+    eyeColor: parseAiMuseEnum(raw.eyeColor, AI_MUSE_EYE_COLORS, DEFAULT_AI_MUSE_CONFIG.eyeColor),
+    hairColor: parseAiMuseEnum(raw.hairColor, AI_MUSE_HAIR_COLORS, DEFAULT_AI_MUSE_CONFIG.hairColor),
+    hairLength: parseAiMuseEnum(raw.hairLength, AI_MUSE_HAIR_LENGTHS, DEFAULT_AI_MUSE_CONFIG.hairLength),
+    settings: parseAiMuseSettings(raw.settings),
+    refreshSeconds,
+    poolSize,
+    sources,
+    feed: parseAiMuseFeed(raw.feed),
+    blockedIds: parseAiMuseBlockedIds(raw.blockedIds),
+  };
+}
+
+/** Accept https URLs (and same-origin library paths) for manual feed adds. */
+export function isAiMuseFeedUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (/^https:\/\//i.test(trimmed)) return true;
+  return trimmed.startsWith('/api/ai-muse/library/');
+}
+
+/** Fisher–Yates shuffle; returns a new array. */
+export function shuffleAiMuseFeed(feed: AiMuseFeedItem[]): AiMuseFeedItem[] {
+  const next = [...feed];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = next[i]!;
+    next[i] = next[j]!;
+    next[j] = tmp;
+  }
+  return next;
+}
+
+export function catalogEntryToFeedItem(entry: AiMuseCatalogEntry): AiMuseFeedItem {
+  return {
+    id: entry.id,
+    url: entry.url,
+    width: entry.width,
+    height: entry.height,
+  };
 }
 
 export function createBlackFramePixels(): number[] {

@@ -6,6 +6,7 @@ import {
   type Project,
 } from '@pixopen/core';
 import { Field } from './ControlSection';
+import { NumberSlider } from './NumberSlider';
 import { DvdPreview } from './DvdPreview';
 
 type Props = {
@@ -45,33 +46,29 @@ export function DvdStudio({ project, onChange }: Props) {
       <section className="dvd-screensaver-controls-panel">
         <h3 className="dvd-screensaver-section-title">Settings</h3>
         <div className="dvd-screensaver-controls-grid">
-          <Field label={`Movement speed (${config.speedPxPerSec} px/s)`} htmlFor="dvd-speed">
-            <input
+          <Field label="Movement speed" htmlFor="dvd-speed">
+            <NumberSlider
               id="dvd-speed"
-              type="range"
               min={8}
               max={40}
               step={1}
               value={config.speedPxPerSec}
-              onChange={(e) =>
-                applyConfig({ ...config, speedPxPerSec: Number(e.target.value) })
-              }
+              formatValue={(v) => `${v} px/s`}
+              onChange={(speedPxPerSec) => applyConfig({ ...config, speedPxPerSec })}
             />
             <p className="muted text-xs m-0 mt-1">
               Base travel speed. Pair with Smoothness for how it feels on the Pixoo.
             </p>
           </Field>
-          <Field label={`Smoothness (${config.smoothness}/10)`} htmlFor="dvd-smoothness">
-            <input
+          <Field label="Smoothness" htmlFor="dvd-smoothness">
+            <NumberSlider
               id="dvd-smoothness"
-              type="range"
               min={1}
               max={10}
               step={1}
               value={config.smoothness}
-              onChange={(e) =>
-                applyConfig({ ...config, smoothness: Number(e.target.value) })
-              }
+              formatValue={(v) => `${v}/10`}
+              onChange={(smoothness) => applyConfig({ ...config, smoothness })}
             />
             <p className="muted text-xs m-0 mt-1">
               Slows the logo and adds a motion trail tuned for Pixoo&apos;s ~2 fps updates.

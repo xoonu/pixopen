@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { ControlSection, Field } from './ControlSection';
+import { NumberSlider } from './NumberSlider';
 import { ScrollRegion } from './ScrollRegion';
 import { EditorCanvasBar } from './EditorToolbar';
 import { ImageImportModal } from './ImageImportModal';
@@ -16,6 +17,8 @@ import { DvdPanel } from './DvdPanel';
 import { DvdStudio } from './DvdStudio';
 import { SpotifyPanel } from './SpotifyPanel';
 import { SpotifyStudio } from './SpotifyStudio';
+import { AiMusePanel } from './AiMusePanel';
+import { AiMuseStudio } from './AiMuseStudio';
 import { StudioChrome } from './StudioChrome';
 import { SequencePreview } from './SequencePreview';
 import { frameToImageData, useStudio } from '../studio/StudioProvider';
@@ -117,9 +120,10 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
   const isWeather = shouldUseWeatherUi(project);
   const isDvd = shouldUseDvdScreensaverUi(project);
   const isSpotify = shouldUseSpotifyNowPlayingUi(project);
+  const isAiMuse = shouldUseAiMuseUi(project);
   const isImageFrame = project.type === 'image-frame';
   const isAnimator = project.type === 'animator';
-  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather && !isDvd && !isSpotify;
+  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather && !isDvd && !isSpotify && !isAiMuse;
   const showToolbar = drawingTools.length > 0;
   const imageMode = String(project.appConfig?.mode ?? 'slideshow') as 'single' | 'slideshow';
 
@@ -220,6 +224,25 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
         </aside>
         <main className="studio-main-panel min-w-0">
           <SpotifyStudio project={project} />
+        </main>
+      </div>
+    );
+  }
+
+  if (isAiMuse) {
+    const handleAiMuseChange = (appConfig: Record<string, unknown>) => {
+      setProject((prev) => (prev ? { ...prev, appConfig: { ...prev.appConfig, ...appConfig } } : prev));
+      syncLiveSignToRuntime(project.id, appConfig);
+    };
+
+    return (
+      <div className="studio-page studio-workspace-layout">
+        <aside className="studio-sidebar" aria-label="Project sidebar">
+          <StudioChrome deviceIp={deviceIp} />
+          <AiMusePanel project={project} onChange={handleAiMuseChange} />
+        </aside>
+        <main className="studio-main-panel min-w-0">
+          <AiMuseStudio project={project} onChange={handleAiMuseChange} />
         </main>
       </div>
     );
@@ -394,14 +417,14 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
             }}
           />
           <Field label="Slide duration (ms)" htmlFor="slide-duration">
-            <input
+            <NumberSlider
               id="slide-duration"
-              className="input"
-              type="number"
               min={500}
+              max={30000}
               step={100}
               value={project.frameDurationMs}
-              onChange={(e) => setProject({ ...project, frameDurationMs: Number(e.target.value) })}
+              formatValue={(v) => `${v} ms`}
+              onChange={(frameDurationMs) => setProject({ ...project, frameDurationMs })}
             />
           </Field>
           {imageMode === 'slideshow' ? (
@@ -493,14 +516,14 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
             e.target.value = '';
           }} />
           <Field label="Frame duration (ms)" htmlFor="frame-duration">
-            <input
+            <NumberSlider
               id="frame-duration"
-              className="input"
-              type="number"
               min={50}
+              max={2000}
               step={50}
               value={project.frameDurationMs}
-              onChange={(e) => setProject({ ...project, frameDurationMs: Number(e.target.value) })}
+              formatValue={(v) => `${v} ms`}
+              onChange={(frameDurationMs) => setProject({ ...project, frameDurationMs })}
             />
           </Field>
           <label className="checkbox-field" htmlFor="animation-loop">

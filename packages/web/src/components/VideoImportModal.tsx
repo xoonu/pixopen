@@ -9,6 +9,7 @@ import {
   DEFAULT_VIDEO_IMPORT_FRAMES,
   MAX_VIDEO_IMPORT_FRAMES,
 } from '@pixopen/core';
+import { NumberSlider } from './NumberSlider';
 
 export type VideoImportOptions = {
   maxFrames: number;
@@ -191,54 +192,51 @@ export function VideoImportModal({ file, onImport, onCancel, importing = false }
 
         <label className="control-row video-import-length">
           <span className="field-label">Start</span>
-          <input
-            type="range"
+          <NumberSlider
             min={0}
             max={maxStartSec || 0}
             step={0.05}
             value={clampedStartSec}
             disabled={importing || !ready}
-            onChange={(e) => setStartSec(Number(e.target.value))}
+            formatValue={formatTime}
+            onChange={setStartSec}
           />
-          <span className="control-value">{formatTime(clampedStartSec)}</span>
         </label>
 
         <label className="control-row video-import-length">
           <span className="field-label">Clip length (frames)</span>
-          <input
-            type="range"
+          <NumberSlider
             min={1}
             max={MAX_VIDEO_IMPORT_FRAMES}
             value={maxFrames}
             disabled={importing || !ready}
-            onChange={(e) => setMaxFrames(Number(e.target.value))}
+            onChange={setMaxFrames}
           />
-          <span className="control-value">{maxFrames}</span>
         </label>
 
         {coverLayout.panX > 0 ? (
           <label className="control-row video-import-length">
             <span className="field-label">Horizontal position</span>
-            <input
-              type="range"
+            <NumberSlider
               min={0}
               max={100}
               value={Math.round(focus.focusX * 100)}
               disabled={importing || !ready}
-              onChange={(e) => setFocusX(Number(e.target.value) / 100)}
+              formatValue={(v) => `${v}%`}
+              onChange={(v) => setFocusX(v / 100)}
             />
           </label>
         ) : null}
         {coverLayout.panY > 0 ? (
           <label className="control-row video-import-length">
             <span className="field-label">Vertical position</span>
-            <input
-              type="range"
+            <NumberSlider
               min={0}
               max={100}
               value={Math.round(focus.focusY * 100)}
               disabled={importing || !ready}
-              onChange={(e) => setFocusY(Number(e.target.value) / 100)}
+              formatValue={(v) => `${v}%`}
+              onChange={(v) => setFocusY(v / 100)}
             />
           </label>
         ) : null}

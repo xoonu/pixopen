@@ -143,6 +143,11 @@ export {
   parseSpotifyNowPlayingConfig,
   createSpotifyLogoPixels,
 } from './spotifyNowPlaying/index.js';
+export {
+  renderAiMuseBoard,
+  renderAiMusePreview,
+  parseAiMuseConfig,
+} from './aiMuse/index.js';
 
 export function compositeFrame(
   base: Frame,

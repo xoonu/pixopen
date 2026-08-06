@@ -7,6 +7,7 @@ import {
   type Project,
 } from '@pixopen/core';
 import { Field } from './ControlSection';
+import { NumberSlider } from './NumberSlider';
 
 type Props = {
   project: Project;
@@ -153,20 +154,17 @@ export function FlipNoteBoardPanel({ project, onChange }: Props) {
               onChange={(backgroundGradientEnd) => applyConfig({ ...config, backgroundGradientEnd })}
             />
             <Field label="Gradient angle" htmlFor="flip-note-gradient-angle">
-              <div className="flip-note-gradient-angle-row">
-                <input
-                  id="flip-note-gradient-angle"
-                  type="range"
-                  min={0}
-                  max={359}
-                  value={config.backgroundGradientAngle}
-                  onChange={(e) =>
-                    applyConfig({ ...config, backgroundGradientAngle: Number(e.target.value) })
-                  }
-                  aria-valuetext={`${config.backgroundGradientAngle} degrees`}
-                />
-                <span className="flip-note-gradient-angle-value">{config.backgroundGradientAngle}°</span>
-              </div>
+              <NumberSlider
+                id="flip-note-gradient-angle"
+                min={0}
+                max={359}
+                value={config.backgroundGradientAngle}
+                formatValue={(v) => `${v}°`}
+                aria-valuetext={`${config.backgroundGradientAngle} degrees`}
+                onChange={(backgroundGradientAngle) =>
+                  applyConfig({ ...config, backgroundGradientAngle })
+                }
+              />
             </Field>
             <Field label="Gradient origin" htmlFor="flip-note-gradient-origin">
               <select

@@ -1,12 +1,13 @@
-import { compositeFrame, parseDvdScreensaverConfig, parseFlipNoteConfig, parseSpotifyNowPlayingConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderDvdScreensaverFromSimulator, renderFlipNoteBoard, renderSpotifyNowPlayingBoard, renderStockTickerBoard, renderWeatherBoard, DvdSimulator, dvdEffectiveSimConfig } from '@pixopen/renderer';
+import { compositeFrame, parseAiMuseConfig, parseDvdScreensaverConfig, parseFlipNoteConfig, parseSpotifyNowPlayingConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderAiMuseBoard, renderDvdScreensaverFromSimulator, renderFlipNoteBoard, renderSpotifyNowPlayingBoard, renderStockTickerBoard, renderWeatherBoard, DvdSimulator, dvdEffectiveSimConfig } from '@pixopen/renderer';
 import { fetchDataSource, getDataSource } from '@pixopen/datasources';
 import { openPixooStream, type PixooStream } from '@pixopen/device';
 import type { DataSourceResult } from '@pixopen/datasources';
-import { normalizeProject, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseSpotifyNowPlayingUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type Project, type SpotifyNowPlayingSnapshot, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
+import { normalizeProject, shouldUseAiMuseUi, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseSpotifyNowPlayingUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type AiMuseSnapshot, type Project, type SpotifyNowPlayingSnapshot, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
 import type { WebSocket } from 'ws';
 import { fetchStockQuotes } from './marketData/quotes.js';
 import { fetchWeatherSnapshot } from './weatherData/index.js';
 import { fetchSpotifyNowPlaying } from './spotifyData/index.js';
+import { fetchAiMuseSnapshot } from './aiMuse/index.js';
 import { startKeepAwake, stopKeepAwake } from './keepAwake.js';
 
 type RuntimeState = {
@@ -32,6 +33,9 @@ type RuntimeState = {
   weatherFetchedAt: number;
   spotifySnapshot: SpotifyNowPlayingSnapshot | null;
   spotifyFetchedAt: number;
+  aiMuseSnapshot: AiMuseSnapshot | null;
+  aiMuseFetchedAt: number;
+  aiMuseConfigKey: string;
   dvdSimulator: DvdSimulator | null;
   dvdSimConfigKey: string;
   dvdLastTickAt: number;
@@ -104,6 +108,8 @@ export function syncRuntimeProject(project: Project) {
   active.quotesKey = '';
   active.weatherKey = '';
   active.spotifyFetchedAt = 0;
+  active.aiMuseFetchedAt = 0;
+  active.aiMuseConfigKey = '';
   if (shouldUseDvdScreensaverUi(active.project) && active.dvdSimulator) {
     const config = parseDvdScreensaverConfig(active.project.appConfig);
     const simConfig = dvdEffectiveSimConfig(config);
@@ -122,7 +128,8 @@ function isAnimatedLiveSign(project: Project): boolean {
     shouldUseStockTickerUi(project) ||
     shouldUseWeatherUi(project) ||
     shouldUseDvdScreensaverUi(project) ||
-    shouldUseSpotifyNowPlayingUi(project)
+    shouldUseSpotifyNowPlayingUi(project) ||
+    shouldUseAiMuseUi(project)
   );
 }
 
@@ -130,7 +137,7 @@ function runtimeTiming(project: Project): { tickMs: number; devicePushMs: number
   if (shouldUseDvdScreensaverUi(project)) {
     return { tickMs: DVD_TICK_MS, devicePushMs: DVD_DEVICE_PUSH_MS };
   }
-  if (shouldUseSpotifyNowPlayingUi(project)) {
+  if (shouldUseSpotifyNowPlayingUi(project) || shouldUseAiMuseUi(project)) {
     return { tickMs: 1000, devicePushMs: LIVE_SIGN_DEVICE_PUSH_MS };
   }
   if (isAnimatedLiveSign(project)) {
@@ -192,6 +199,35 @@ async function refreshSpotifyIfNeeded(state: RuntimeState): Promise<SpotifyNowPl
   const snapshot = await fetchSpotifyNowPlaying();
   state.spotifySnapshot = snapshot;
   state.spotifyFetchedAt = now;
+  return snapshot;
+}
+
+async function refreshAiMuseIfNeeded(state: RuntimeState): Promise<AiMuseSnapshot | null> {
+  const config = parseAiMuseConfig(state.project.appConfig);
+  const configKey = JSON.stringify(config);
+  const refreshMs = config.refreshSeconds * 1000;
+  const now = Date.now();
+  if (
+    state.aiMuseSnapshot &&
+    state.aiMuseConfigKey === configKey &&
+    now - state.aiMuseFetchedAt < refreshMs
+  ) {
+    return state.aiMuseSnapshot;
+  }
+  const snapshot = await fetchAiMuseSnapshot(state.project.id, state.project.appConfig);
+  // Keep last good image if a refresh fails after we already had one.
+  if (
+    snapshot.error &&
+    state.aiMuseSnapshot?.pixels?.length &&
+    !snapshot.imageId
+  ) {
+    state.aiMuseFetchedAt = now;
+    state.aiMuseConfigKey = configKey;
+    return state.aiMuseSnapshot;
+  }
+  state.aiMuseSnapshot = snapshot;
+  state.aiMuseFetchedAt = now;
+  state.aiMuseConfigKey = configKey;
   return snapshot;
 }
 
@@ -261,6 +297,7 @@ function renderLiveFrame(
   quotes: StockQuoteSnapshot[],
   weather: WeatherSnapshot | null,
   spotify: SpotifyNowPlayingSnapshot | null,
+  aiMuse: AiMuseSnapshot | null,
 ) {
   const base = project.frames[0];
   if (!base) throw new Error('Project has no base frame');
@@ -286,6 +323,11 @@ function renderLiveFrame(
   if (shouldUseSpotifyNowPlayingUi(project)) {
     const config = parseSpotifyNowPlayingConfig(project.appConfig);
     return renderSpotifyNowPlayingBoard(config, spotify);
+  }
+
+  if (shouldUseAiMuseUi(project)) {
+    const config = parseAiMuseConfig(project.appConfig);
+    return renderAiMuseBoard(config, aiMuse);
   }
 
   if (shouldUseFlipNoteUi(project)) {
@@ -330,6 +372,9 @@ export async function startRuntime(project: Project, deviceIp: string) {
     weatherFetchedAt: 0,
     spotifySnapshot: null,
     spotifyFetchedAt: 0,
+    aiMuseSnapshot: null,
+    aiMuseFetchedAt: 0,
+    aiMuseConfigKey: '',
     dvdSimulator: null,
     dvdSimConfigKey: '',
     dvdLastTickAt: 0,
@@ -398,6 +443,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
       let quotes: StockQuoteSnapshot[] = [];
       let weather: WeatherSnapshot | null = null;
       let spotify: SpotifyNowPlayingSnapshot | null = null;
+      let aiMuse: AiMuseSnapshot | null = null;
 
       if (shouldUseStockTickerUi(project)) {
         quotes = await refreshQuotesIfNeeded(state);
@@ -405,6 +451,8 @@ export async function startRuntime(project: Project, deviceIp: string) {
         weather = await refreshWeatherIfNeeded(state);
       } else if (shouldUseSpotifyNowPlayingUi(project)) {
         spotify = await refreshSpotifyIfNeeded(state);
+      } else if (shouldUseAiMuseUi(project)) {
+        aiMuse = await refreshAiMuseIfNeeded(state);
       } else if (!shouldUseFlipNoteUi(project)) {
         for (const area of project.liveAreas) {
           const adapter = getDataSource(area.datasourceId);
@@ -425,7 +473,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
         }
       }
 
-      const frame = renderLiveFrame(project, state, values, quotes, weather, spotify);
+      const frame = renderLiveFrame(project, state, values, quotes, weather, spotify, aiMuse);
       state.lastFrame = frame.pixels;
       broadcastPreview(frame.pixels);
       await pushToDevice(frame.pixels);

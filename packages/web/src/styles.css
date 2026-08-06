@@ -78,6 +78,49 @@
     @apply focus:border-brand focus:ring-2 focus:ring-brand/25;
   }
   .select { @apply pr-8; }
+
+  .number-slider {
+    @apply flex w-full items-center gap-3;
+  }
+  .number-slider.is-disabled {
+    @apply opacity-45;
+  }
+  .number-slider-input {
+    --slider-progress: 0%;
+    @apply h-2 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-transparent;
+    background: linear-gradient(
+      to right,
+      var(--color-brand) 0%,
+      var(--color-brand) var(--slider-progress),
+      var(--color-surface-3) var(--slider-progress),
+      var(--color-surface-3) 100%
+    );
+  }
+  .number-slider-input::-webkit-slider-runnable-track {
+    @apply h-2 rounded-full bg-transparent;
+  }
+  .number-slider-input::-webkit-slider-thumb {
+    @apply relative mt-[-4px] size-4 appearance-none rounded-full border-2 border-brand bg-fg shadow-md transition-transform;
+    -webkit-appearance: none;
+  }
+  .number-slider-input:hover::-webkit-slider-thumb {
+    @apply scale-110;
+  }
+  .number-slider-input:focus-visible {
+    @apply outline-none;
+  }
+  .number-slider-input:focus-visible::-webkit-slider-thumb {
+    @apply ring-2 ring-brand/40 ring-offset-2 ring-offset-surface-1;
+  }
+  .number-slider-input::-moz-range-track {
+    @apply h-2 rounded-full bg-transparent;
+  }
+  .number-slider-input::-moz-range-thumb {
+    @apply size-4 rounded-full border-2 border-brand bg-fg;
+  }
+  .number-slider-value {
+    @apply min-w-[3.75rem] shrink-0 whitespace-nowrap rounded-md border border-border bg-surface-0 px-2 py-1 text-right text-xs font-medium tabular-nums text-fg;
+  }
   .checkbox { @apply size-4 rounded border-border-strong accent-brand; }
 
   .badge {
@@ -260,9 +303,6 @@
 .flip-note-color-picker-row { @apply flex items-center gap-2; }
 .flip-note-color-picker-row input[type="color"] { @apply size-9 cursor-pointer rounded p-0.5; }
 .flip-note-color-picker-row input[type="text"] { @apply flex-1 font-mono; }
-.flip-note-gradient-angle-row { @apply flex items-center gap-3; }
-.flip-note-gradient-angle-row input[type="range"] { @apply h-1.5 min-w-0 flex-1 cursor-pointer accent-brand; }
-.flip-note-gradient-angle-value { @apply w-10 shrink-0 text-right text-sm tabular-nums text-muted; }
 .flip-note-messages-header { @apply flex items-center justify-between gap-3; }
 .flip-note-message-list { @apply grid gap-3; }
 .flip-note-message-block { @apply grid gap-2 rounded-xl border border-border bg-surface-2 p-3; }
@@ -348,6 +388,54 @@
 .spotify-now-playing-sidebar-fields { @apply grid gap-3; }
 .spotify-now-playing-sidebar-preview { @apply grid gap-2 justify-items-center rounded-lg bg-surface-0 p-3; }
 .sidebar-spotify-now-playing-preview { @apply grid gap-2 justify-items-center; }
+.ai-muse-studio { @apply grid max-w-4xl gap-5; }
+.ai-muse-preview-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.ai-muse-preview-stage { @apply flex min-h-[120px] justify-center rounded-lg bg-surface-0 p-4; }
+.ai-muse-preview-wrap { @apply grid gap-2 justify-items-center; }
+.ai-muse-preview-canvas { image-rendering: pixelated; @apply rounded border border-border; }
+.ai-muse-data-hint { @apply text-xs m-0 text-center max-w-[36rem]; }
+.ai-muse-section-title { @apply text-sm font-semibold text-fg m-0; }
+.ai-muse-controls-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.ai-muse-controls-grid { @apply grid gap-3 sm:grid-cols-2; }
+.ai-muse-settings-block { @apply grid gap-2; }
+.ai-muse-settings-grid { @apply flex flex-wrap gap-2; }
+.ai-muse-setting-chip { @apply inline-flex items-center gap-2 rounded-lg border border-border bg-surface-0 px-3 py-1.5 text-sm cursor-pointer; }
+.ai-muse-setting-chip.is-selected { @apply border-accent bg-surface-1; }
+.ai-muse-sidebar-panel { @apply grid gap-3 pt-4 mt-4 border-t border-border; }
+.ai-muse-sidebar-preview { @apply grid gap-2 justify-items-center rounded-lg bg-surface-0 p-3; }
+.sidebar-ai-muse-preview { @apply grid gap-2 justify-items-center; }
+.ai-muse-feed-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.ai-muse-feed-header { @apply flex flex-wrap items-start justify-between gap-3; }
+.ai-muse-feed-actions { @apply flex flex-wrap gap-2; }
+.ai-muse-feed-status { @apply text-brand; }
+.ai-muse-url-row { @apply flex flex-wrap items-center gap-2; }
+.ai-muse-url-row .input { @apply min-w-[12rem] flex-1; }
+.ai-muse-controls-panel code,
+.ai-muse-generate-panel code {
+  @apply rounded bg-surface-0 px-1 py-0.5 text-[0.75rem] text-fg;
+}
+.ai-muse-generate-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.ai-muse-generate-key-row { @apply grid gap-2; }
+.ai-muse-generate-key-actions { @apply flex flex-wrap gap-2; }
+.ai-muse-generate-panel a { @apply text-brand underline-offset-2 hover:underline; }
+.ai-muse-saved-block { @apply grid gap-2 border-t border-border pt-3 mt-1; }
+.ai-muse-feed-grid {
+  @apply m-0 grid list-none gap-3 p-0;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+}
+.ai-muse-feed-card {
+  @apply relative grid overflow-hidden rounded-lg border border-border bg-surface-0;
+  cursor: grab;
+}
+.ai-muse-feed-card.is-dragging { @apply opacity-60 ring-2 ring-brand/50; }
+.ai-muse-feed-thumb {
+  @apply aspect-square w-full object-cover bg-surface-1;
+}
+.ai-muse-feed-card-bar {
+  @apply flex items-center justify-between gap-1 border-t border-border bg-surface-1/90 px-1 py-0.5;
+}
+.ai-muse-feed-index { @apply pl-1 text-[0.65rem] tabular-nums text-muted; }
+.ai-muse-feed-card-actions { @apply flex items-center; }
 
 /* ── Studio workspace ── */
 .studio-page.studio-workspace-layout {
@@ -716,20 +804,9 @@
 
 .image-import-field { @apply grid gap-1.5 min-w-0; }
 .image-import-field-label { @apply text-sm font-medium text-muted; }
-.image-import-field-row {
-  @apply grid items-center gap-3 min-w-0;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-.image-import-field-row input[type="range"] {
-  @apply h-2 w-full min-w-0 cursor-pointer accent-brand;
-}
-.image-import-field-value {
-  @apply min-w-10 text-right text-sm tabular-nums text-muted;
-}
 .image-import-checkbox { @apply text-sm leading-snug; }
 
-.control-row { @apply grid items-center gap-2 text-sm; grid-template-columns: 7.5rem 1fr 3rem; }
-.control-value { @apply text-right text-sm text-muted; }
+.control-row { @apply grid items-center gap-2 text-sm; grid-template-columns: 7.5rem minmax(0, 1fr); }
 
 .live-region-grid { @apply grid gap-2.5; grid-template-columns: 1fr 1fr; }
 .live-area-list { @apply m-0 mt-2 grid list-none gap-2 p-0; }

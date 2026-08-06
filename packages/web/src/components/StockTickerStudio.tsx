@@ -8,6 +8,7 @@ import {
   type Project,
 } from '@pixopen/core';
 import { Field } from './ControlSection';
+import { NumberSlider } from './NumberSlider';
 import { StockTickerPreview } from './StockTickerPreview';
 
 type Props = {
@@ -186,15 +187,14 @@ export function StockTickerStudio({ project, onChange }: Props) {
           label={config.displayMode === 'list' ? 'Hold each page (seconds)' : 'Hold each symbol (seconds)'}
           htmlFor="stock-ticker-hold-sec"
         >
-          <input
+          <NumberSlider
             id="stock-ticker-hold-sec"
-            type="number"
             min={1.5}
+            max={15}
             step={0.5}
             value={config.holdMs / 1000}
-            onChange={(e) =>
-              applyConfig({ ...config, holdMs: Math.max(1500, Number(e.target.value) * 1000) })
-            }
+            formatValue={(v) => `${v}s`}
+            onChange={(sec) => applyConfig({ ...config, holdMs: Math.round(sec * 1000) })}
           />
         </Field>
       </section>

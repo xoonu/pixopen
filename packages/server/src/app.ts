@@ -50,6 +50,18 @@ import {
   spotifyAuthStatus,
   spotifyRedirectUri,
 } from './spotifyData/index.js';
+import {
+  clearGeminiApiKey,
+  fetchAiMuseCandidates,
+  fetchAiMuseSnapshot,
+  geminiAuthStatus,
+  generateNanoBananaImage,
+  listGeneratedImages,
+  saveGeminiApiKey,
+} from './aiMuse/index.js';
+import { resolveLibraryFilePath } from './aiMuse/library.js';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { WeatherLocation, WeatherTemperatureUnit } from '@pixopen/core';
 
 export function createApp(options?: { webDist?: string }) {
@@ -414,6 +426,97 @@ export function createApp(options?: { webDist?: string }) {
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not save Spotify credentials';
       return c.json({ error: message }, 400);
+    }
+  });
+
+  app.post('/api/ai-muse/snapshot', async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      const projectId = typeof body.projectId === 'string' && body.projectId ? body.projectId : 'preview';
+      const appConfig =
+        body.appConfig && typeof body.appConfig === 'object'
+          ? (body.appConfig as Record<string, unknown>)
+          : {};
+      return c.json(await fetchAiMuseSnapshot(projectId, appConfig));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'AI Muse fetch failed';
+      return c.json({ error: message }, 502);
+    }
+  });
+
+  app.post('/api/ai-muse/candidates', async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      const appConfig =
+        body.appConfig && typeof body.appConfig === 'object'
+          ? (body.appConfig as Record<string, unknown>)
+          : {};
+      const excludeIds = Array.isArray(body.excludeIds)
+        ? body.excludeIds.map((id: unknown) => String(id))
+        : [];
+      return c.json(await fetchAiMuseCandidates(appConfig, excludeIds));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'AI Muse candidates failed';
+      return c.json({ error: message }, 502);
+    }
+  });
+
+  app.get('/api/ai-muse/library/:name', async (c) => {
+    const filePath = resolveLibraryFilePath(c.req.param('name'));
+    if (!filePath) return c.json({ error: 'Not found' }, 404);
+    try {
+      const bytes = await readFile(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      const type =
+        ext === '.png' ? 'image/png'
+        : ext === '.webp' ? 'image/webp'
+        : ext === '.gif' ? 'image/gif'
+        : 'image/jpeg';
+      return new Response(bytes, {
+        headers: {
+          'Content-Type': type,
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    } catch {
+      return c.json({ error: 'Not found' }, 404);
+    }
+  });
+
+  app.get('/api/ai-muse/gemini/status', async (c) => c.json(await geminiAuthStatus()));
+
+  app.post('/api/ai-muse/gemini/credentials', async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      if (body.clear) {
+        await clearGeminiApiKey();
+        return c.json(await geminiAuthStatus());
+      }
+      const apiKey = typeof body.apiKey === 'string' ? body.apiKey : '';
+      await saveGeminiApiKey(apiKey);
+      return c.json(await geminiAuthStatus());
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not save Gemini API key';
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  app.get('/api/ai-muse/generated', async (c) => c.json({ items: await listGeneratedImages() }));
+
+  app.post('/api/ai-muse/generate', async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      const userPrompt = typeof body.prompt === 'string' ? body.prompt : '';
+      const model = typeof body.model === 'string' ? body.model : undefined;
+      const appConfig =
+        body.appConfig && typeof body.appConfig === 'object'
+          ? (body.appConfig as Record<string, unknown>)
+          : {};
+      const result = await generateNanoBananaImage({ userPrompt, appConfig, model });
+      return c.json(result);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Nano Banana generation failed';
+      return c.json({ error: message }, 502);
     }
   });
 

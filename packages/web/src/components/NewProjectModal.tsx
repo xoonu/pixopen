@@ -15,6 +15,7 @@ const TEMPLATE_ICON: Record<string, IconName> = {
   'weather-frame': 'weatherFrame',
   'dvd-screensaver': 'dvdScreensaver',
   'spotify-now-playing': 'spotifyNowPlaying',
+  'ai-muse': 'aiMuse',
   'blank-image-frame': 'imageFrame',
   'blank-animator': 'animator',
 };

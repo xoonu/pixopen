@@ -13,6 +13,7 @@ import {
   LayerAddIcon,
   LiveStreaming01Icon,
   MoreHorizontalIcon,
+  SparklesIcon,
   Note01Icon,
   PaintBoardIcon,
   PaintBucketIcon,
@@ -48,6 +49,8 @@ export const icons = {
   dvdScreensaver: PlayIcon,
   /** Project template: Spotify now playing */
   spotifyNowPlaying: Album01Icon,
+  /** Project template: AI Muse feed */
+  aiMuse: SparklesIcon,
   /** Editor: pencil tool */
   pencil: PencilIcon,
   /** Editor: eraser tool */

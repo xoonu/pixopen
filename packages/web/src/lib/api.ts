@@ -1,4 +1,36 @@
-import type { AppTemplate, DataSourceMeta, Frame, Project, SavedDevice, SpotifyNowPlayingSnapshot, StockQuoteSnapshot, StockTickerPerformancePeriod, WeatherLocation, WeatherSnapshot, WeatherTemperatureUnit } from '@pixopen/core';
+import type { AiMuseFeedItem, AiMuseSnapshot, AppTemplate, DataSourceMeta, Frame, Project, SavedDevice, SpotifyNowPlayingSnapshot, StockQuoteSnapshot, StockTickerPerformancePeriod, WeatherLocation, WeatherSnapshot, WeatherTemperatureUnit } from '@pixopen/core';
+
+export type AiMuseCandidatesResponse = {
+  items: AiMuseFeedItem[];
+  candidateCount: number;
+  matchCount: number;
+  error?: string;
+};
+
+export type GeminiStatus = {
+  configured: boolean;
+  apiKeySet: boolean;
+  apiKeyPreview: string;
+  source: 'studio' | 'env' | 'none';
+  models: Array<{ id: string; label: string }>;
+};
+
+export type AiMuseGenerateResponse = {
+  item: AiMuseFeedItem;
+  prompt: string;
+  model: string;
+  savedPath: string;
+};
+
+export type AiMuseGeneratedItem = {
+  id: string;
+  filename: string;
+  prompt: string;
+  model: string;
+  createdAt: string;
+  width: number;
+  height: number;
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -207,5 +239,39 @@ export const api = {
       }),
     nowPlaying: () =>
       request<SpotifyNowPlayingSnapshot>('/api/spotify/now-playing', { method: 'POST' }),
+  },
+  aiMuse: {
+    snapshot: (projectId: string, appConfig: Record<string, unknown>) =>
+      request<AiMuseSnapshot>('/api/ai-muse/snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, appConfig }),
+      }),
+    candidates: (appConfig: Record<string, unknown>, excludeIds: string[] = []) =>
+      request<AiMuseCandidatesResponse>('/api/ai-muse/candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appConfig, excludeIds }),
+      }),
+    geminiStatus: () => request<GeminiStatus>('/api/ai-muse/gemini/status'),
+    saveGeminiKey: (apiKey: string) =>
+      request<GeminiStatus>('/api/ai-muse/gemini/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey }),
+      }),
+    clearGeminiKey: () =>
+      request<GeminiStatus>('/api/ai-muse/gemini/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clear: true }),
+      }),
+    generate: (opts: { prompt: string; appConfig: Record<string, unknown>; model?: string }) =>
+      request<AiMuseGenerateResponse>('/api/ai-muse/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts),
+      }),
+    generated: () => request<{ items: AiMuseGeneratedItem[] }>('/api/ai-muse/generated'),
   },
 };

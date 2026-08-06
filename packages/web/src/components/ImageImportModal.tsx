@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CANVAS_SIZE, type Frame } from '@pixopen/core';
+import { NumberSlider } from './NumberSlider';
 
 /** CSS display scale for the 64×64 preview canvas. */
 const PREVIEW_SCALE = 6;
@@ -183,17 +184,14 @@ export function ImageImportModal({
           <div className="image-import-controls">
             <label className="image-import-field">
               <span className="image-import-field-label">Scale</span>
-              <div className="image-import-field-row">
-                <input
-                  type="range"
-                  min={0.25}
-                  max={4}
-                  step={0.05}
-                  value={placement.zoom}
-                  onChange={(e) => setPlacement((p) => ({ ...p, zoom: Number(e.target.value) }))}
-                />
-                <span className="image-import-field-value">{placement.zoom.toFixed(2)}×</span>
-              </div>
+              <NumberSlider
+                min={0.25}
+                max={4}
+                step={0.05}
+                value={placement.zoom}
+                formatValue={(v) => `${v.toFixed(2)}×`}
+                onChange={(zoom) => setPlacement((p) => ({ ...p, zoom }))}
+              />
             </label>
 
             <label className="image-import-field">
