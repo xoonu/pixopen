@@ -11,11 +11,12 @@ type Props = {
 
 const TEMPLATE_ICON: Record<string, IconName> = {
   'flip-note': 'flipNote',
-  'stock-ticker': 'liveSign',
+  'stock-ticker': 'stockTicker',
   'weather-frame': 'weatherFrame',
   'dvd-screensaver': 'dvdScreensaver',
   'spotify-now-playing': 'spotifyNowPlaying',
   'ai-muse': 'aiMuse',
+  'instagram-feed': 'instagramFeed',
   'blank-image-frame': 'imageFrame',
   'blank-animator': 'animator',
 };

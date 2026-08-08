@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
+import { shouldBlockBlankLiveSignEditor } from '../lib/liveFrameStudios';
 import { ControlSection, Field } from './ControlSection';
 import { NumberSlider } from './NumberSlider';
 import { ScrollRegion } from './ScrollRegion';
@@ -19,6 +20,9 @@ import { SpotifyPanel } from './SpotifyPanel';
 import { SpotifyStudio } from './SpotifyStudio';
 import { AiMusePanel } from './AiMusePanel';
 import { AiMuseStudio } from './AiMuseStudio';
+import { InstagramFeedPanel } from './InstagramFeedPanel';
+import { InstagramFeedStudio } from './InstagramFeedStudio';
+import { MissingLiveFrameStudio } from './MissingLiveFrameStudio';
 import { StudioChrome } from './StudioChrome';
 import { SequencePreview } from './SequencePreview';
 import { frameToImageData, useStudio } from '../studio/StudioProvider';
@@ -121,9 +125,10 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
   const isDvd = shouldUseDvdScreensaverUi(project);
   const isSpotify = shouldUseSpotifyNowPlayingUi(project);
   const isAiMuse = shouldUseAiMuseUi(project);
+  const isInstagram = shouldUseInstagramFeedUi(project);
   const isImageFrame = project.type === 'image-frame';
   const isAnimator = project.type === 'animator';
-  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather && !isDvd && !isSpotify && !isAiMuse;
+  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather && !isDvd && !isSpotify && !isAiMuse && !isInstagram;
   const showToolbar = drawingTools.length > 0;
   const imageMode = String(project.appConfig?.mode ?? 'slideshow') as 'single' | 'slideshow';
 
@@ -246,6 +251,32 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
         </main>
       </div>
     );
+  }
+
+  if (isInstagram) {
+    const handleInstagramChange = (appConfig: Record<string, unknown>) => {
+      setProject((prev) => (prev ? { ...prev, appConfig: { ...prev.appConfig, ...appConfig } } : prev));
+      syncLiveSignToRuntime(project.id, appConfig);
+    };
+
+    return (
+      <div className="studio-page studio-workspace-layout">
+        <aside className="studio-sidebar" aria-label="Project sidebar">
+          <StudioChrome deviceIp={deviceIp} />
+          <InstagramFeedPanel project={project} onChange={handleInstagramChange} />
+        </aside>
+        <main className="studio-main-panel min-w-0">
+          <InstagramFeedStudio project={project} onChange={handleInstagramChange} />
+        </main>
+      </div>
+    );
+  }
+
+  // Named Live Frames that didn't match a dedicated branch above must NEVER
+  // fall through to the blank drawing editor. This also catches stale web/dist
+  // vs a newer /api/apps template list (templateId present, shouldUse* missing).
+  if (shouldBlockBlankLiveSignEditor(project)) {
+    return <MissingLiveFrameStudio project={project} deviceIp={deviceIp} />;
   }
 
   const placeLiveRegion = (rect: Rect) => {

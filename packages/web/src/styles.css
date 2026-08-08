@@ -437,6 +437,44 @@
 .ai-muse-feed-index { @apply pl-1 text-[0.65rem] tabular-nums text-muted; }
 .ai-muse-feed-card-actions { @apply flex items-center; }
 
+.instagram-feed-studio { @apply grid max-w-4xl gap-5; }
+.instagram-feed-preview-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.instagram-feed-preview-stage { @apply flex min-h-[120px] justify-center rounded-lg bg-surface-0 p-4; }
+.instagram-feed-preview-wrap { @apply grid gap-2 justify-items-center; }
+.instagram-feed-preview-canvas { image-rendering: pixelated; @apply rounded border border-border; }
+.instagram-feed-data-hint { @apply text-xs m-0 text-center max-w-[36rem]; }
+.instagram-feed-section-title { @apply text-sm font-semibold text-fg m-0; }
+.instagram-feed-controls-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.instagram-feed-controls-grid { @apply grid gap-3 sm:grid-cols-2; }
+.instagram-feed-sidebar-panel { @apply grid gap-3 pt-4 mt-4 border-t border-border; }
+.instagram-feed-sidebar-preview { @apply grid gap-2 justify-items-center rounded-lg bg-surface-0 p-3; }
+.sidebar-instagram-feed-preview { @apply grid gap-2 justify-items-center; }
+.instagram-feed-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.instagram-feed-header { @apply flex flex-wrap items-start justify-between gap-3; }
+.instagram-feed-actions { @apply flex flex-wrap gap-2; }
+.instagram-feed-status { @apply text-brand; }
+.instagram-feed-url-row { @apply flex flex-wrap items-center gap-2; }
+.instagram-feed-url-row .input { @apply min-w-[12rem] flex-1; }
+.instagram-feed-account-list { @apply m-0 flex list-none flex-wrap gap-2 p-0; }
+.instagram-feed-account-chip {
+  @apply inline-flex items-center gap-2 rounded-lg border border-border bg-surface-0 px-2 py-1 text-sm;
+}
+.instagram-feed-grid {
+  @apply m-0 grid list-none grid-cols-2 gap-2 p-0 sm:grid-cols-3 md:grid-cols-4;
+}
+.instagram-feed-card {
+  @apply grid gap-1 overflow-hidden rounded-lg border border-border bg-surface-0;
+}
+.instagram-feed-card.is-dragging { @apply opacity-60 ring-2 ring-brand/50; }
+.instagram-feed-thumb {
+  @apply aspect-square w-full object-cover;
+}
+.instagram-feed-card-bar {
+  @apply flex items-center justify-between gap-1 px-1 pb-1;
+}
+.instagram-feed-index { @apply pl-1 text-[0.65rem] text-muted truncate max-w-[6rem]; }
+.instagram-feed-card-actions { @apply flex items-center; }
+
 /* ── Studio workspace ── */
 .studio-page.studio-workspace-layout {
   display: grid;
@@ -815,6 +853,10 @@
 
 .device-picker { @apply grid gap-3; }
 
+.project-card-photo {
+  image-rendering: auto;
+  @apply size-full object-cover rounded-sm;
+}
 .project-card-preview-stage {
   width: 72%;
   aspect-ratio: 1;

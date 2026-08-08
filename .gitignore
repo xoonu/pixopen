@@ -6,6 +6,7 @@ data/spotify-tokens.json
 data/spotify-credentials.json
 data/gemini-credentials.json
 data/ai-muse/
+data/instagram/
 packages/server/data/projects/
 packages/server/data/devices.json
 packages/server/data/settings.json
@@ -13,6 +14,7 @@ packages/server/data/spotify-tokens.json
 packages/server/data/spotify-credentials.json
 packages/server/data/gemini-credentials.json
 packages/server/data/ai-muse/
+packages/server/data/instagram/
 .DS_Store
 *.log
 .env

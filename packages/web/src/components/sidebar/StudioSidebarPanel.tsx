@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
+import { shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
 import { api } from '../../lib/api';
 import { Field } from '../ControlSection';
 import { SequencePreview } from '../SequencePreview';
@@ -9,6 +9,7 @@ import { WeatherPreview } from '../WeatherPreview';
 import { DvdPreview } from '../DvdPreview';
 import { SpotifyPreview } from '../SpotifyPreview';
 import { AiMusePreview } from '../AiMusePreview';
+import { InstagramFeedPreview } from '../InstagramFeedPreview';
 import { useStudio } from '../../studio/StudioProvider';
 
 type Props = {
@@ -100,6 +101,7 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
   const isDvd = shouldUseDvdScreensaverUi(project);
   const isSpotify = shouldUseSpotifyNowPlayingUi(project);
   const isAiMuse = shouldUseAiMuseUi(project);
+  const isInstagram = shouldUseInstagramFeedUi(project);
 
   return (
     <div className="sidebar-panel-stack">
@@ -198,6 +200,11 @@ export function StudioSidebarPanel({ deviceIp, onProjectIdChange }: Props) {
             <div className="sidebar-ai-muse-preview">
               <span className="field-label">Preview</span>
               <AiMusePreview projectId={project.id} appConfig={project.appConfig} scale={3} playing />
+            </div>
+          ) : isInstagram ? (
+            <div className="sidebar-instagram-feed-preview">
+              <span className="field-label">Preview</span>
+              <InstagramFeedPreview projectId={project.id} appConfig={project.appConfig} scale={3} playing />
             </div>
           ) : (
             <SequencePreview

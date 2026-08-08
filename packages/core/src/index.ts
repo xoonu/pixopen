@@ -38,9 +38,11 @@ import {
   DEFAULT_DVD_SCREENSAVER_CONFIG,
   DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG,
   DEFAULT_AI_MUSE_CONFIG,
+  DEFAULT_INSTAGRAM_FEED_CONFIG,
   createDarkFramePixels,
   createBlackFramePixels,
   getAppTemplate,
+  listExampleLiveFrameTemplateIds,
   migrateProjectType,
   normalizeFlipNoteAppConfig,
   normalizeStockTickerAppConfig,
@@ -48,12 +50,14 @@ import {
   normalizeDvdScreensaverAppConfig,
   normalizeSpotifyNowPlayingAppConfig,
   normalizeAiMuseAppConfig,
+  normalizeInstagramFeedAppConfig,
   shouldUseFlipNoteUi,
   shouldUseStockTickerUi,
   shouldUseWeatherUi,
   shouldUseDvdScreensaverUi,
   shouldUseSpotifyNowPlayingUi,
   shouldUseAiMuseUi,
+  shouldUseInstagramFeedUi,
 } from './apps.js';
 
 export type ProjectType = 'image-frame' | 'animator' | 'live-sign';
@@ -174,6 +178,30 @@ export function createProject(name: string, type: ProjectType = 'animator'): Pro
   };
 }
 
+/** Prefab live-frame defaults keyed by templateId — keep in sync with APP_TEMPLATES examples. */
+const PREFAB_LIVE_FRAME_SETUP: Record<
+  string,
+  { appConfig: Record<string, unknown>; frame: 'dark' | 'black' }
+> = {
+  'flip-note': { appConfig: { ...DEFAULT_FLIP_NOTE_CONFIG }, frame: 'dark' },
+  'stock-ticker': { appConfig: { ...DEFAULT_STOCK_TICKER_CONFIG }, frame: 'dark' },
+  'weather-frame': { appConfig: { ...DEFAULT_WEATHER_FRAME_CONFIG }, frame: 'dark' },
+  'dvd-screensaver': { appConfig: { ...DEFAULT_DVD_SCREENSAVER_CONFIG }, frame: 'black' },
+  'spotify-now-playing': { appConfig: { ...DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG }, frame: 'black' },
+  'ai-muse': { appConfig: { ...DEFAULT_AI_MUSE_CONFIG }, frame: 'black' },
+  'instagram-feed': { appConfig: { ...DEFAULT_INSTAGRAM_FEED_CONFIG }, frame: 'black' },
+};
+
+/** Fail at server boot if an example Live Frame is listed without create defaults. */
+export function assertPrefabLiveFrameSetupComplete(): void {
+  const missing = listExampleLiveFrameTemplateIds().filter((id) => !PREFAB_LIVE_FRAME_SETUP[id]);
+  if (missing.length === 0) return;
+  throw new Error(
+    `Live Frame template(s) missing PREFAB_LIVE_FRAME_SETUP: ${missing.join(', ')}. ` +
+      `Add create defaults in packages/core/src/index.ts before registering in APP_TEMPLATES.`,
+  );
+}
+
 export function createProjectFromTemplate(
   templateId: string,
   name: string,
@@ -187,32 +215,22 @@ export function createProjectFromTemplate(
   const project = createProject(projectName, template.type);
   project.templateId = resolvedTemplateId;
 
-  if (resolvedTemplateId === 'flip-note') {
-    project.appConfig = { ...DEFAULT_FLIP_NOTE_CONFIG };
-    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
-    project.liveAreas = [];
-  } else if (resolvedTemplateId === 'stock-ticker') {
-    project.appConfig = { ...DEFAULT_STOCK_TICKER_CONFIG };
-    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
-    project.liveAreas = [];
-  } else if (resolvedTemplateId === 'weather-frame') {
-    project.appConfig = { ...DEFAULT_WEATHER_FRAME_CONFIG };
-    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createDarkFramePixels() }];
-    project.liveAreas = [];
-  } else if (resolvedTemplateId === 'dvd-screensaver') {
-    project.appConfig = { ...DEFAULT_DVD_SCREENSAVER_CONFIG };
-    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createBlackFramePixels() }];
-    project.liveAreas = [];
-  } else if (resolvedTemplateId === 'spotify-now-playing') {
-    project.appConfig = { ...DEFAULT_SPOTIFY_NOW_PLAYING_CONFIG };
-    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createBlackFramePixels() }];
-    project.liveAreas = [];
-  } else if (resolvedTemplateId === 'ai-muse') {
-    project.appConfig = { ...DEFAULT_AI_MUSE_CONFIG };
-    project.frames = [{ width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createBlackFramePixels() }];
+  const prefab = PREFAB_LIVE_FRAME_SETUP[resolvedTemplateId];
+  if (prefab) {
+    project.appConfig = { ...prefab.appConfig };
+    project.frames = [{
+      width: CANVAS_SIZE,
+      height: CANVAS_SIZE,
+      pixels: prefab.frame === 'black' ? createBlackFramePixels() : createDarkFramePixels(),
+    }];
     project.liveAreas = [];
   } else if (template.type === 'image-frame') {
     project.appConfig = { ...DEFAULT_IMAGE_FRAME_CONFIG };
+  } else if (template.category === 'example') {
+    // Fail loud — never silently create a blank animator/live-sign shell for a listed template.
+    throw new Error(
+      `Template "${resolvedTemplateId}" is registered but has no createProjectFromTemplate setup`,
+    );
   }
 
   return project;
@@ -238,7 +256,10 @@ export function normalizeProject(raw: Project): Project {
   const useAiMuse = !useStockTicker && !useWeather && !useDvd && !useSpotify && shouldUseAiMuseUi({
     templateId: raw.templateId,
   });
-  const useFlipNote = !useStockTicker && !useWeather && !useDvd && !useSpotify && !useAiMuse && shouldUseFlipNoteUi({
+  const useInstagram = !useStockTicker && !useWeather && !useDvd && !useSpotify && !useAiMuse && shouldUseInstagramFeedUi({
+    templateId: raw.templateId,
+  });
+  const useFlipNote = !useStockTicker && !useWeather && !useDvd && !useSpotify && !useAiMuse && !useInstagram && shouldUseFlipNoteUi({
     templateId: raw.templateId,
     type: raw.type as string,
     name: raw.name,
@@ -263,6 +284,9 @@ export function normalizeProject(raw: Project): Project {
   } else if (useAiMuse) {
     templateId = 'ai-muse';
     appConfig = { ...rawConfig, ...normalizeAiMuseAppConfig(rawConfig) };
+  } else if (useInstagram) {
+    templateId = 'instagram-feed';
+    appConfig = { ...rawConfig, ...normalizeInstagramFeedAppConfig(rawConfig) };
   } else if (useFlipNote) {
     templateId = 'flip-note';
     appConfig = { ...rawConfig, ...normalizeFlipNoteAppConfig(rawConfig) };
@@ -273,11 +297,11 @@ export function normalizeProject(raw: Project): Project {
   }
 
   let frames = raw.frames?.length ? raw.frames : [createEmptyFrame()];
-  if ((useFlipNote || useStockTicker || useWeather || useDvd || useSpotify || useAiMuse) && frames.length === 1 && isBlankFrame(frames[0])) {
+  if ((useFlipNote || useStockTicker || useWeather || useDvd || useSpotify || useAiMuse || useInstagram) && frames.length === 1 && isBlankFrame(frames[0])) {
     frames = [{
       width: CANVAS_SIZE,
       height: CANVAS_SIZE,
-      pixels: useDvd || useSpotify || useAiMuse ? createBlackFramePixels() : createDarkFramePixels(),
+      pixels: useDvd || useSpotify || useAiMuse || useInstagram ? createBlackFramePixels() : createDarkFramePixels(),
     }];
   }
 
@@ -287,7 +311,7 @@ export function normalizeProject(raw: Project): Project {
     templateId,
     appConfig,
     frames,
-    liveAreas: useFlipNote || useStockTicker || useWeather || useDvd || useSpotify || useAiMuse ? [] : (raw.liveAreas ?? []),
+    liveAreas: useFlipNote || useStockTicker || useWeather || useDvd || useSpotify || useAiMuse || useInstagram ? [] : (raw.liveAreas ?? []),
   };
 }
 

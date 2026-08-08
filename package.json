@@ -1,14 +1,23 @@
 {
   "name": "pixopen",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build -w @pixopen/core && npm run build -w @pixopen/device && npm run build -w @pixopen/datasources && npm run build -w @pixopen/renderer && npm run build -w @pixopen/server && npm run build -w @pixopen/web",
-    "dev": "npm run dev -w @pixopen/server",
+    "dev": "npm run build -w @pixopen/core && npm run build -w @pixopen/renderer && concurrently -k -n server,web -c cyan,magenta \"PIXOPEN_DEV_UI=1 npm run dev:server\" \"npm run dev:web\"",
+    "dev:server": "npm run dev -w @pixopen/server",
     "dev:web": "npm run dev -w @pixopen/web",
+    "dev:static": "npm run build -w @pixopen/core && npm run build -w @pixopen/renderer && npm run build -w @pixopen/web && npm run dev:server",
     "serve": "npm run build -w @pixopen/core && npm run build -w @pixopen/device && npm run build -w @pixopen/datasources && npm run build -w @pixopen/renderer && npm run build -w @pixopen/server && npm run build -w @pixopen/web && npm run start -w @pixopen/server",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run typecheck"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4"
+  }
 }

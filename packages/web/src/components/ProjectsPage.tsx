@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Frame, Project } from '@pixopen/core';
-import { getAppTemplate, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
+import { getAppTemplate, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
 import { api } from '../lib/api';
-import { renderProjectCardPreview } from '../lib/projectCardPreview';
+import { projectCardFeedImageUrl, renderProjectCardPreview } from '../lib/projectCardPreview';
 import { projectTypeBadgeClass, projectTypeBadgeLabel } from '../lib/projectBadges';
 import { deviceDisplayLabel, deviceDisplayTitle } from '../lib/deviceLabel';
 import { useSavedDevices } from '../hooks/useSavedDevices';
@@ -20,6 +20,13 @@ function frameToImageData(frame: Frame): ImageData {
 }
 
 function ProjectCardPreview({ project }: { project: Project }) {
+  const feedImageUrl = useMemo(() => projectCardFeedImageUrl(project), [
+    project.id,
+    project.updatedAt,
+    project.appConfig,
+    project.templateId,
+  ]);
+  const [photoFailed, setPhotoFailed] = useState(false);
   const frame = useMemo(
     () => renderProjectCardPreview(project),
     [project.id, project.updatedAt, project.frames, project.appConfig, project.liveAreas, project.type, project.templateId],
@@ -27,12 +34,32 @@ function ProjectCardPreview({ project }: { project: Project }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    setPhotoFailed(false);
+  }, [feedImageUrl]);
+
+  useEffect(() => {
+    if (feedImageUrl && !photoFailed) return;
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.putImageData(frameToImageData(frame), 0, 0);
-  }, [frame]);
+  }, [frame, feedImageUrl, photoFailed]);
+
+  if (feedImageUrl && !photoFailed) {
+    return (
+      <div className="project-card-preview-stage">
+        <img
+          src={feedImageUrl}
+          alt=""
+          className="project-card-photo"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setPhotoFailed(true)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="project-card-preview-stage">
@@ -295,7 +322,7 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
 
                   <p className="text-xs text-muted">
                     {project.frames.length} frame{project.frames.length === 1 ? '' : 's'}
-                    {project.type === 'live-sign' && !shouldUseFlipNoteUi(project) && !shouldUseStockTickerUi(project) && !shouldUseWeatherUi(project) && !shouldUseDvdScreensaverUi(project) && !shouldUseSpotifyNowPlayingUi(project) && !shouldUseAiMuseUi(project)
+                    {project.type === 'live-sign' && !shouldUseFlipNoteUi(project) && !shouldUseStockTickerUi(project) && !shouldUseWeatherUi(project) && !shouldUseDvdScreensaverUi(project) && !shouldUseSpotifyNowPlayingUi(project) && !shouldUseAiMuseUi(project) && !shouldUseInstagramFeedUi(project)
                       ? ` · ${project.liveAreas.length} region${project.liveAreas.length === 1 ? '' : 's'}`
                       : ''}
                     · Updated {formatRelativeDate(project.updatedAt)}

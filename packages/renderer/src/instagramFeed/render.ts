@@ -1,12 +1,12 @@
 import {
   CANVAS_SIZE,
   createBlackFramePixels,
-  type AiMuseConfig,
-  type AiMuseSnapshot,
   type Frame,
+  type InstagramFeedConfig,
+  type InstagramFeedSnapshot,
 } from '@pixopen/core';
-import { parseAiMuseConfig } from './config.js';
-import { createAiMuseThumbnailPixels } from './thumbnail.js';
+import { parseInstagramFeedConfig } from './config.js';
+import { createInstagramFeedThumbnailPixels } from './thumbnail.js';
 
 function setPixel(pixels: number[], x: number, y: number, r: number, g: number, b: number, a = 255) {
   if (x < 0 || y < 0 || x >= CANVAS_SIZE || y >= CANVAS_SIZE) return;
@@ -19,15 +19,20 @@ function setPixel(pixels: number[], x: number, y: number, r: number, g: number, 
 
 const FONT: Record<string, number[][]> = {
   A: [[0,1,0],[1,0,1],[1,1,1],[1,0,1],[1,0,1]],
+  D: [[1,1,0],[1,0,1],[1,0,1],[1,0,1],[1,1,0]],
   E: [[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,1,1]],
   F: [[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,0,0]],
+  G: [[1,1,1],[1,0,0],[1,0,1],[1,0,1],[1,1,1]],
   I: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
   L: [[1,0,0],[1,0,0],[1,0,0],[1,0,0],[1,1,1]],
   M: [[1,0,1],[1,1,1],[1,0,1],[1,0,1],[1,0,1]],
   N: [[1,0,1],[1,1,1],[1,1,1],[1,0,1],[1,0,1]],
   O: [[1,1,1],[1,0,1],[1,0,1],[1,0,1],[1,1,1]],
+  R: [[1,1,0],[1,0,1],[1,1,0],[1,0,1],[1,0,1]],
   S: [[1,1,1],[1,0,0],[1,1,1],[0,0,1],[1,1,1]],
+  T: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,0]],
   U: [[1,0,1],[1,0,1],[1,0,1],[1,0,1],[1,1,1]],
+  Y: [[1,0,1],[1,0,1],[0,1,0],[0,1,0],[0,1,0]],
   ' ': [[0],[0],[0],[0],[0]],
 };
 
@@ -53,11 +58,11 @@ function fallbackFrame(message: string): Frame {
   const pixels = createBlackFramePixels();
   for (let y = 0; y < CANVAS_SIZE; y++) {
     for (let x = 0; x < CANVAS_SIZE; x++) {
-      const v = 12 + ((x + y) % 8);
-      setPixel(pixels, x, y, v, v + 2, v + 8);
+      const v = 10 + ((x * 3 + y * 5) % 10);
+      setPixel(pixels, x, y, v + 4, v, v + 10);
     }
   }
-  drawText(pixels, 10, 28, message.slice(0, 12), [210, 220, 235]);
+  drawText(pixels, 8, 28, message.slice(0, 12), [220, 225, 235]);
   return { width: CANVAS_SIZE, height: CANVAS_SIZE, pixels };
 }
 
@@ -65,28 +70,35 @@ function frameFromPixels(pixels: number[]): Frame {
   if (pixels.length === CANVAS_SIZE * CANVAS_SIZE * 4) {
     return { width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: [...pixels] };
   }
-  return fallbackFrame('AI MUSE');
+  return fallbackFrame('IG FEED');
 }
 
-export function renderAiMuseBoard(
-  _config: AiMuseConfig,
-  snapshot: AiMuseSnapshot | null,
+export function renderInstagramFeedBoard(
+  _config: InstagramFeedConfig,
+  snapshot: InstagramFeedSnapshot | null,
 ): Frame {
   if (snapshot?.pixels?.length === CANVAS_SIZE * CANVAS_SIZE * 4 && snapshot.imageId) {
     return frameFromPixels(snapshot.pixels);
   }
-  if (snapshot?.error) return fallbackFrame('NO MATCH');
+  if (snapshot?.error) {
+    const msg = snapshot.error.toLowerCase().includes('empty')
+      ? 'NO IMAGES'
+      : snapshot.error.toLowerCase().includes('username')
+        ? 'ADD USER'
+        : 'NO IMAGES';
+    return fallbackFrame(msg);
+  }
   // Branded mark while waiting — avoids a blank "LOADING" tile on project cards / empty feeds.
   if (!snapshot) {
-    return { width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createAiMuseThumbnailPixels() };
+    return { width: CANVAS_SIZE, height: CANVAS_SIZE, pixels: createInstagramFeedThumbnailPixels() };
   }
   return fallbackFrame('LOADING');
 }
 
-export function renderAiMusePreview(
+export function renderInstagramFeedPreview(
   appConfig: Record<string, unknown> | undefined,
-  snapshot: AiMuseSnapshot | null,
+  snapshot: InstagramFeedSnapshot | null,
 ): Frame {
-  const config = parseAiMuseConfig(appConfig);
-  return renderAiMuseBoard(config, snapshot);
+  const config = parseInstagramFeedConfig(appConfig);
+  return renderInstagramFeedBoard(config, snapshot);
 }

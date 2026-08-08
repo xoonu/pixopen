@@ -1,19 +1,21 @@
 import {
   Add01Icon,
+  AiImageIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  Album01Icon,
+  ChartCandlestickIcon,
   CloudIcon,
+  MusicNote01Icon,
   ComputerIcon,
   Copy01Icon,
   Delete02Icon,
   EraserIcon,
   Folder01Icon,
   Image01Icon,
+  InstagramIcon,
   LayerAddIcon,
   LiveStreaming01Icon,
   MoreHorizontalIcon,
-  SparklesIcon,
   Note01Icon,
   PaintBoardIcon,
   PaintBucketIcon,
@@ -43,14 +45,18 @@ export const icons = {
   liveSign: LiveStreaming01Icon,
   /** Project template: flip note */
   flipNote: Note01Icon,
+  /** Project template: stock ticker */
+  stockTicker: ChartCandlestickIcon,
   /** Project template: weather frame */
   weatherFrame: CloudIcon,
   /** Project template: DVD screensaver */
   dvdScreensaver: PlayIcon,
   /** Project template: Spotify now playing */
-  spotifyNowPlaying: Album01Icon,
+  spotifyNowPlaying: MusicNote01Icon,
   /** Project template: AI Muse feed */
-  aiMuse: SparklesIcon,
+  aiMuse: AiImageIcon,
+  /** Project template: Instagram feed */
+  instagramFeed: InstagramIcon,
   /** Editor: pencil tool */
   pencil: PencilIcon,
   /** Editor: eraser tool */

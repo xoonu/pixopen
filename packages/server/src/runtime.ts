@@ -1,13 +1,20 @@
-import { compositeFrame, parseAiMuseConfig, parseDvdScreensaverConfig, parseFlipNoteConfig, parseSpotifyNowPlayingConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderAiMuseBoard, renderDvdScreensaverFromSimulator, renderFlipNoteBoard, renderSpotifyNowPlayingBoard, renderStockTickerBoard, renderWeatherBoard, DvdSimulator, dvdEffectiveSimConfig } from '@pixopen/renderer';
+import { compositeFrame, parseAiMuseConfig, parseDvdScreensaverConfig, parseFlipNoteConfig, parseInstagramFeedConfig, parseSpotifyNowPlayingConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderAiMuseBoard, renderDvdScreensaverFromSimulator, renderFlipNoteBoard, renderInstagramFeedBoard, renderSpotifyNowPlayingBoard, renderStockTickerBoard, renderWeatherBoard, DvdSimulator, dvdEffectiveSimConfig } from '@pixopen/renderer';
 import { fetchDataSource, getDataSource } from '@pixopen/datasources';
 import { openPixooStream, type PixooStream } from '@pixopen/device';
 import type { DataSourceResult } from '@pixopen/datasources';
-import { normalizeProject, shouldUseAiMuseUi, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseSpotifyNowPlayingUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type AiMuseSnapshot, type Project, type SpotifyNowPlayingSnapshot, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
+import { normalizeProject, shouldUseAiMuseUi, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseSpotifyNowPlayingUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type AiMuseSnapshot, type InstagramFeedSnapshot, type Project, type SpotifyNowPlayingSnapshot, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
 import type { WebSocket } from 'ws';
 import { fetchStockQuotes } from './marketData/quotes.js';
 import { fetchWeatherSnapshot } from './weatherData/index.js';
 import { fetchSpotifyNowPlaying } from './spotifyData/index.js';
 import { fetchAiMuseSnapshot } from './aiMuse/index.js';
+import {
+  fetchInstagramFeedSnapshot,
+  markInstagramFeedPolled,
+  refreshInstagramFeed,
+  shouldPollInstagramFeed,
+} from './instagramFeed/index.js';
+import { saveProject } from './storage.js';
 import { startKeepAwake, stopKeepAwake } from './keepAwake.js';
 
 type RuntimeState = {
@@ -36,6 +43,9 @@ type RuntimeState = {
   aiMuseSnapshot: AiMuseSnapshot | null;
   aiMuseFetchedAt: number;
   aiMuseConfigKey: string;
+  instagramSnapshot: InstagramFeedSnapshot | null;
+  instagramFetchedAt: number;
+  instagramConfigKey: string;
   dvdSimulator: DvdSimulator | null;
   dvdSimConfigKey: string;
   dvdLastTickAt: number;
@@ -110,6 +120,8 @@ export function syncRuntimeProject(project: Project) {
   active.spotifyFetchedAt = 0;
   active.aiMuseFetchedAt = 0;
   active.aiMuseConfigKey = '';
+  active.instagramFetchedAt = 0;
+  active.instagramConfigKey = '';
   if (shouldUseDvdScreensaverUi(active.project) && active.dvdSimulator) {
     const config = parseDvdScreensaverConfig(active.project.appConfig);
     const simConfig = dvdEffectiveSimConfig(config);
@@ -129,7 +141,8 @@ function isAnimatedLiveSign(project: Project): boolean {
     shouldUseWeatherUi(project) ||
     shouldUseDvdScreensaverUi(project) ||
     shouldUseSpotifyNowPlayingUi(project) ||
-    shouldUseAiMuseUi(project)
+    shouldUseAiMuseUi(project) ||
+    shouldUseInstagramFeedUi(project)
   );
 }
 
@@ -137,7 +150,11 @@ function runtimeTiming(project: Project): { tickMs: number; devicePushMs: number
   if (shouldUseDvdScreensaverUi(project)) {
     return { tickMs: DVD_TICK_MS, devicePushMs: DVD_DEVICE_PUSH_MS };
   }
-  if (shouldUseSpotifyNowPlayingUi(project) || shouldUseAiMuseUi(project)) {
+  if (
+    shouldUseSpotifyNowPlayingUi(project) ||
+    shouldUseAiMuseUi(project) ||
+    shouldUseInstagramFeedUi(project)
+  ) {
     return { tickMs: 1000, devicePushMs: LIVE_SIGN_DEVICE_PUSH_MS };
   }
   if (isAnimatedLiveSign(project)) {
@@ -231,6 +248,70 @@ async function refreshAiMuseIfNeeded(state: RuntimeState): Promise<AiMuseSnapsho
   return snapshot;
 }
 
+/** Re-scrape Instagram accounts on the poll interval; keep last-good feed on failure. */
+async function pollInstagramAccountsIfNeeded(state: RuntimeState): Promise<void> {
+  const config = parseInstagramFeedConfig(state.project.appConfig);
+  if (config.accounts.length === 0) return;
+  const feedEmpty = config.feed.length === 0;
+  if (!shouldPollInstagramFeed(state.project.id, config.feedPollMinutes, feedEmpty)) return;
+
+  const result = await refreshInstagramFeed(state.project.appConfig);
+  markInstagramFeedPolled(state.project.id);
+  if (result.feed.length === 0) return;
+
+  const nextConfig = {
+    ...state.project.appConfig,
+    ...config,
+    feed: result.feed,
+  };
+  const nextProject = normalizeProject({
+    ...state.project,
+    appConfig: nextConfig,
+    updatedAt: new Date().toISOString(),
+  });
+  state.project = nextProject;
+  state.instagramConfigKey = '';
+  try {
+    await saveProject(nextProject);
+  } catch {
+    // In-memory feed still updates even if disk write fails.
+  }
+}
+
+async function refreshInstagramIfNeeded(state: RuntimeState): Promise<InstagramFeedSnapshot | null> {
+  await pollInstagramAccountsIfNeeded(state);
+
+  const config = parseInstagramFeedConfig(state.project.appConfig);
+  const configKey = JSON.stringify({
+    refreshSeconds: config.refreshSeconds,
+    feed: config.feed.map((i) => i.id),
+    blockedIds: config.blockedIds,
+  });
+  const refreshMs = config.refreshSeconds * 1000;
+  const now = Date.now();
+  if (
+    state.instagramSnapshot &&
+    state.instagramConfigKey === configKey &&
+    now - state.instagramFetchedAt < refreshMs
+  ) {
+    return state.instagramSnapshot;
+  }
+  const snapshot = await fetchInstagramFeedSnapshot(state.project.id, state.project.appConfig);
+  if (
+    snapshot.error &&
+    state.instagramSnapshot?.pixels?.length &&
+    !snapshot.imageId
+  ) {
+    state.instagramFetchedAt = now;
+    state.instagramConfigKey = configKey;
+    return state.instagramSnapshot;
+  }
+  state.instagramSnapshot = snapshot;
+  state.instagramFetchedAt = now;
+  state.instagramConfigKey = configKey;
+  return snapshot;
+}
+
 function dvdSimKey(config: ReturnType<typeof dvdEffectiveSimConfig>): string {
   return `${config.seed}|${config.speedPxPerSec}|${config.logoScale}|${config.cornerSensitivity}`;
 }
@@ -298,6 +379,7 @@ function renderLiveFrame(
   weather: WeatherSnapshot | null,
   spotify: SpotifyNowPlayingSnapshot | null,
   aiMuse: AiMuseSnapshot | null,
+  instagram: InstagramFeedSnapshot | null,
 ) {
   const base = project.frames[0];
   if (!base) throw new Error('Project has no base frame');
@@ -328,6 +410,11 @@ function renderLiveFrame(
   if (shouldUseAiMuseUi(project)) {
     const config = parseAiMuseConfig(project.appConfig);
     return renderAiMuseBoard(config, aiMuse);
+  }
+
+  if (shouldUseInstagramFeedUi(project)) {
+    const config = parseInstagramFeedConfig(project.appConfig);
+    return renderInstagramFeedBoard(config, instagram);
   }
 
   if (shouldUseFlipNoteUi(project)) {
@@ -375,6 +462,9 @@ export async function startRuntime(project: Project, deviceIp: string) {
     aiMuseSnapshot: null,
     aiMuseFetchedAt: 0,
     aiMuseConfigKey: '',
+    instagramSnapshot: null,
+    instagramFetchedAt: 0,
+    instagramConfigKey: '',
     dvdSimulator: null,
     dvdSimConfigKey: '',
     dvdLastTickAt: 0,
@@ -444,6 +534,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
       let weather: WeatherSnapshot | null = null;
       let spotify: SpotifyNowPlayingSnapshot | null = null;
       let aiMuse: AiMuseSnapshot | null = null;
+      let instagram: InstagramFeedSnapshot | null = null;
 
       if (shouldUseStockTickerUi(project)) {
         quotes = await refreshQuotesIfNeeded(state);
@@ -453,6 +544,8 @@ export async function startRuntime(project: Project, deviceIp: string) {
         spotify = await refreshSpotifyIfNeeded(state);
       } else if (shouldUseAiMuseUi(project)) {
         aiMuse = await refreshAiMuseIfNeeded(state);
+      } else if (shouldUseInstagramFeedUi(project)) {
+        instagram = await refreshInstagramIfNeeded(state);
       } else if (!shouldUseFlipNoteUi(project)) {
         for (const area of project.liveAreas) {
           const adapter = getDataSource(area.datasourceId);
@@ -473,7 +566,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
         }
       }
 
-      const frame = renderLiveFrame(project, state, values, quotes, weather, spotify, aiMuse);
+      const frame = renderLiveFrame(project, state, values, quotes, weather, spotify, aiMuse, instagram);
       state.lastFrame = frame.pixels;
       broadcastPreview(frame.pixels);
       await pushToDevice(frame.pixels);

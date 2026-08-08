@@ -147,7 +147,14 @@ export {
   renderAiMuseBoard,
   renderAiMusePreview,
   parseAiMuseConfig,
+  createAiMuseThumbnailPixels,
 } from './aiMuse/index.js';
+export {
+  renderInstagramFeedBoard,
+  renderInstagramFeedPreview,
+  parseInstagramFeedConfig,
+  createInstagramFeedThumbnailPixels,
+} from './instagramFeed/index.js';
 
 export function compositeFrame(
   base: Frame,

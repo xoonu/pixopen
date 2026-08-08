@@ -60,11 +60,16 @@ import {
   saveGeminiApiKey,
 } from './aiMuse/index.js';
 import { resolveLibraryFilePath } from './aiMuse/library.js';
+import {
+  fetchInstagramFeedSnapshot,
+  refreshInstagramFeed,
+  resolveMediaFilePath,
+} from './instagramFeed/index.js';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { WeatherLocation, WeatherTemperatureUnit } from '@pixopen/core';
 
-export function createApp(options?: { webDist?: string }) {
+export function createApp(options?: { webDist?: string; viteDevUrl?: string }) {
   const app = new Hono();
 
   app.use('/*', cors());
@@ -520,6 +525,57 @@ export function createApp(options?: { webDist?: string }) {
     }
   });
 
+  app.post('/api/instagram-feed/snapshot', async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      const projectId = typeof body.projectId === 'string' && body.projectId ? body.projectId : 'preview';
+      const appConfig =
+        body.appConfig && typeof body.appConfig === 'object'
+          ? (body.appConfig as Record<string, unknown>)
+          : {};
+      return c.json(await fetchInstagramFeedSnapshot(projectId, appConfig));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Instagram feed fetch failed';
+      return c.json({ error: message }, 502);
+    }
+  });
+
+  app.post('/api/instagram-feed/refresh', async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      const appConfig =
+        body.appConfig && typeof body.appConfig === 'object'
+          ? (body.appConfig as Record<string, unknown>)
+          : {};
+      return c.json(await refreshInstagramFeed(appConfig));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Instagram feed refresh failed';
+      return c.json({ error: message }, 502);
+    }
+  });
+
+  app.get('/api/instagram-feed/media/:name', async (c) => {
+    const filePath = resolveMediaFilePath(c.req.param('name'));
+    if (!filePath) return c.json({ error: 'Not found' }, 404);
+    try {
+      const bytes = await readFile(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      const type =
+        ext === '.png' ? 'image/png'
+        : ext === '.webp' ? 'image/webp'
+        : ext === '.gif' ? 'image/gif'
+        : 'image/jpeg';
+      return new Response(bytes, {
+        headers: {
+          'Content-Type': type,
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    } catch {
+      return c.json({ error: 'Not found' }, 404);
+    }
+  });
+
   app.post('/api/spotify/now-playing', async (c) => {
     try {
       const snapshot = await fetchSpotifyNowPlaying();
@@ -616,11 +672,21 @@ export function createApp(options?: { webDist?: string }) {
     return c.json({ ok: true });
   });
 
+  const viteDevUrl = options?.viteDevUrl?.replace(/\/$/, '');
+  if (viteDevUrl) {
+    // During `npm run dev`, always send the browser to Vite so new Live Frame
+    // studios aren't served from a stale web/dist that falls through to the blank editor.
+    app.get('/', (c) => c.redirect(viteDevUrl));
+    app.get('/index.html', (c) => c.redirect(viteDevUrl));
+  }
+
   const webDist = options?.webDist;
   if (webDist && existsSync(webDist)) {
     app.use('/assets/*', serveStatic({ root: webDist }));
-    app.get('/', serveStatic({ root: webDist, path: 'index.html' }));
-    app.get('/index.html', serveStatic({ root: webDist, path: 'index.html' }));
+    if (!viteDevUrl) {
+      app.get('/', serveStatic({ root: webDist, path: 'index.html' }));
+      app.get('/index.html', serveStatic({ root: webDist, path: 'index.html' }));
+    }
   }
 
   return app;

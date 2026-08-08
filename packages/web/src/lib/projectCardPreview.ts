@@ -1,14 +1,27 @@
-import { shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Project } from '@pixopen/core';
+import {
+  createBlackFramePixels,
+  shouldUseAiMuseUi,
+  shouldUseFlipNoteUi,
+  shouldUseInstagramFeedUi,
+  shouldUseStockTickerUi,
+  shouldUseWeatherUi,
+  shouldUseDvdScreensaverUi,
+  shouldUseSpotifyNowPlayingUi,
+  type Frame,
+  type LiveArea,
+  type Project,
+} from '@pixopen/core';
 import type { DataSourceResult } from '@pixopen/datasources';
 import {
   compositeFrame,
+  createAiMuseThumbnailPixels,
+  createInstagramFeedThumbnailPixels,
   createSpotifyLogoPixels,
   demoQuotesForConfig,
   demoWeatherSnapshot,
   parseFlipNoteConfig,
   parseStockTickerConfig,
   parseWeatherFrameConfig,
-  renderAiMusePreview,
   renderFlipNotePreview,
   renderSpotifyNowPlayingPreview,
   renderStockTickerPreview,
@@ -53,11 +66,24 @@ function placeholderDataForArea(area: LiveArea): DataSourceResult {
   }
 }
 
+/** First usable feed image URL for AI Muse / Instagram project cards. */
+export function projectCardFeedImageUrl(project: Project): string | null {
+  if (!shouldUseAiMuseUi(project) && !shouldUseInstagramFeedUi(project)) return null;
+  const feed = project.appConfig?.feed;
+  if (!Array.isArray(feed)) return null;
+  for (const item of feed) {
+    if (!item || typeof item !== 'object') continue;
+    const url = (item as { url?: unknown }).url;
+    if (typeof url === 'string' && url.trim()) return url.trim();
+  }
+  return null;
+}
+
 /** Static thumbnail for project cards — renders Flip Note and live regions, otherwise frame 0. */
 export function renderProjectCardPreview(project: Project): Frame {
   const base = project.frames[0];
   if (!base) {
-    return { width: 64, height: 64, pixels: new Array(64 * 64 * 4).fill(0) };
+    return { width: 64, height: 64, pixels: createBlackFramePixels() };
   }
 
   if (shouldUseFlipNoteUi(project)) {
@@ -90,13 +116,19 @@ export function renderProjectCardPreview(project: Project): Frame {
   }
 
   if (shouldUseAiMuseUi(project)) {
-    return renderAiMusePreview(project.appConfig, {
-      pixels: base.pixels,
-      poolSize: 0,
-      candidateCount: 0,
-      matchCount: 0,
-      fetchedAt: new Date().toISOString(),
-    });
+    return {
+      width: 64,
+      height: 64,
+      pixels: createAiMuseThumbnailPixels(),
+    };
+  }
+
+  if (shouldUseInstagramFeedUi(project)) {
+    return {
+      width: 64,
+      height: 64,
+      pixels: createInstagramFeedThumbnailPixels(),
+    };
   }
 
   if (project.type === 'live-sign') {

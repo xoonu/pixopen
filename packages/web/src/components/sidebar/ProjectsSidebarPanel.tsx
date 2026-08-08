@@ -46,7 +46,10 @@ export function ProjectsSidebarPanel({ onOpen }: Props) {
           placeholder="Auto-named if empty"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && blanks[0] && void createFromTemplate(blanks[0].id)}
+          onKeyDown={(e) => {
+            // Never default to a blank animator/image-frame — require an explicit template click.
+            if (e.key === 'Enter') e.preventDefault();
+          }}
         />
       </Field>
 

@@ -1,9 +1,15 @@
-import type { AiMuseFeedItem, AiMuseSnapshot, AppTemplate, DataSourceMeta, Frame, Project, SavedDevice, SpotifyNowPlayingSnapshot, StockQuoteSnapshot, StockTickerPerformancePeriod, WeatherLocation, WeatherSnapshot, WeatherTemperatureUnit } from '@pixopen/core';
+import type { AiMuseFeedItem, AiMuseSnapshot, AppTemplate, DataSourceMeta, Frame, InstagramAccountStatus, InstagramFeedItem, InstagramFeedSnapshot, Project, SavedDevice, SpotifyNowPlayingSnapshot, StockQuoteSnapshot, StockTickerPerformancePeriod, WeatherLocation, WeatherSnapshot, WeatherTemperatureUnit } from '@pixopen/core';
 
 export type AiMuseCandidatesResponse = {
   items: AiMuseFeedItem[];
   candidateCount: number;
   matchCount: number;
+  error?: string;
+};
+
+export type InstagramFeedRefreshResponse = {
+  feed: InstagramFeedItem[];
+  accounts: InstagramAccountStatus[];
   error?: string;
 };
 
@@ -273,5 +279,19 @@ export const api = {
         body: JSON.stringify(opts),
       }),
     generated: () => request<{ items: AiMuseGeneratedItem[] }>('/api/ai-muse/generated'),
+  },
+  instagramFeed: {
+    snapshot: (projectId: string, appConfig: Record<string, unknown>) =>
+      request<InstagramFeedSnapshot>('/api/instagram-feed/snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, appConfig }),
+      }),
+    refresh: (appConfig: Record<string, unknown>) =>
+      request<InstagramFeedRefreshResponse>('/api/instagram-feed/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appConfig }),
+      }),
   },
 };

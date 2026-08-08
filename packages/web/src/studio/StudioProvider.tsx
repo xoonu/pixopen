@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CANVAS_SIZE, createEmptyFrame, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type Project, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, createEmptyFrame, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type Project, type Rect } from '@pixopen/core';
+import { shouldBlockBlankLiveSignEditor } from '../lib/liveFrameStudios';
 import { api } from '../lib/api';
 import { cloneProject, useProjectHistory } from '../hooks/useProjectHistory';
 import { useToast } from '../components/Toast';
@@ -200,12 +201,15 @@ export function StudioProvider({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    if (project.templateId === 'flip-note' || shouldUseFlipNoteUi(project)) return;
-    if (project.templateId === 'stock-ticker' || shouldUseStockTickerUi(project)) return;
-    if (project.templateId === 'weather-frame' || shouldUseWeatherUi(project)) return;
-    if (project.templateId === 'dvd-screensaver' || shouldUseDvdScreensaverUi(project)) return;
-    if (project.templateId === 'spotify-now-playing' || shouldUseSpotifyNowPlayingUi(project)) return;
-    if (project.templateId === 'ai-muse' || shouldUseAiMuseUi(project)) return;
+    // Named Live Frames never use the blank pixel canvas compositor.
+    if (shouldBlockBlankLiveSignEditor(project)) return;
+    if (shouldUseFlipNoteUi(project)) return;
+    if (shouldUseStockTickerUi(project)) return;
+    if (shouldUseWeatherUi(project)) return;
+    if (shouldUseDvdScreensaverUi(project)) return;
+    if (shouldUseSpotifyNowPlayingUi(project)) return;
+    if (shouldUseAiMuseUi(project)) return;
+    if (shouldUseInstagramFeedUi(project)) return;
 
     if (!currentFrame) return;
     ctx.putImageData(frameToImageData(currentFrame), 0, 0);
@@ -432,7 +436,20 @@ export function StudioProvider({
 
   const projectTypeLabel = project ? formatProjectTypeLabel(project.type) : '';
   const drawingTools = (() => {
-    if (!project || project.type === 'image-frame' || shouldUseFlipNoteUi(project) || shouldUseStockTickerUi(project) || shouldUseWeatherUi(project) || shouldUseDvdScreensaverUi(project) || shouldUseSpotifyNowPlayingUi(project) || shouldUseAiMuseUi(project)) return [] as StudioTool[];
+    if (!project || project.type === 'image-frame') return [] as StudioTool[];
+    // Named Live Frames (including unknown/new templateIds) never get pixel tools.
+    if (shouldBlockBlankLiveSignEditor(project)) return [] as StudioTool[];
+    if (
+      shouldUseFlipNoteUi(project) ||
+      shouldUseStockTickerUi(project) ||
+      shouldUseWeatherUi(project) ||
+      shouldUseDvdScreensaverUi(project) ||
+      shouldUseSpotifyNowPlayingUi(project) ||
+      shouldUseAiMuseUi(project) ||
+      shouldUseInstagramFeedUi(project)
+    ) {
+      return [] as StudioTool[];
+    }
     if (project.type === 'live-sign') return ['pencil', 'eraser', 'fill', 'live-area'] as StudioTool[];
     return ['pencil', 'eraser', 'fill'] as StudioTool[];
   })();

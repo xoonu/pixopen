@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
+import { shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
 import { api } from '../lib/api';
 import { projectTypeBadgeClass } from '../lib/projectBadges';
 import { deviceDisplayLabel, deviceDisplayTitle } from '../lib/deviceLabel';
@@ -37,8 +37,9 @@ export function StudioChrome({ deviceIp }: Props) {
   const isDvd = shouldUseDvdScreensaverUi(project);
   const isSpotify = shouldUseSpotifyNowPlayingUi(project);
   const isAiMuse = shouldUseAiMuseUi(project);
+  const isInstagram = shouldUseInstagramFeedUi(project);
   const isImageFrame = project.type === 'image-frame';
-  const hideTargetDevice = isFlipNote || isStockTicker || isWeather || isDvd || isSpotify || isAiMuse || isImageFrame;
+  const hideTargetDevice = isFlipNote || isStockTicker || isWeather || isDvd || isSpotify || isAiMuse || isInstagram || isImageFrame;
   const canSend = Boolean(deviceIp) && !nameConflict && Boolean(project.name.trim()) && !sending;
   const isThisProjectLive = liveRuntimeActive && liveRuntimeProjectId === project.id && !runtimeError;
 
@@ -78,7 +79,8 @@ export function StudioChrome({ deviceIp }: Props) {
         !shouldUseWeatherUi(project) &&
         !shouldUseDvdScreensaverUi(project) &&
         !shouldUseSpotifyNowPlayingUi(project) &&
-        !shouldUseAiMuseUi(project)
+        !shouldUseAiMuseUi(project) &&
+        !shouldUseInstagramFeedUi(project)
       ) {
         setStatus(`Live on ${deviceLabel}`);
       }

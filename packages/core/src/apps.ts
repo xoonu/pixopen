@@ -303,6 +303,59 @@ export type AiMuseSnapshot = {
   error?: string;
 };
 
+/** Playlist entry for Instagram Feed live frames. */
+export type InstagramFeedItem = {
+  id: string;
+  username: string;
+  url: string;
+  width: number;
+  height: number;
+  takenAt?: string;
+};
+
+export type InstagramAccountStatus = {
+  username: string;
+  ok: boolean;
+  imageCount: number;
+  error?: string;
+};
+
+export type InstagramFeedConfig = {
+  /** Public Instagram usernames (no @), max 10. */
+  accounts: string[];
+  /** On-device image cycle interval. */
+  refreshSeconds: number;
+  /** How often to re-fetch account posts (minutes). */
+  feedPollMinutes: number;
+  /** Curated playlist shown in settings; device cycles these in order. */
+  feed: InstagramFeedItem[];
+  /** Removed / disliked image ids — excluded from future fills. */
+  blockedIds: string[];
+};
+
+export type InstagramFeedSnapshot = {
+  imageId?: string;
+  url?: string;
+  username?: string;
+  /** Full 64×64 RGBA when an image is available. */
+  pixels: number[];
+  feedSize: number;
+  fetchedAt: string;
+  error?: string;
+};
+
+export const MAX_INSTAGRAM_ACCOUNTS = 10;
+export const MAX_INSTAGRAM_FEED = 100;
+export const MAX_INSTAGRAM_BLOCKED = 300;
+
+export const DEFAULT_INSTAGRAM_FEED_CONFIG: InstagramFeedConfig = {
+  accounts: [],
+  refreshSeconds: 10,
+  feedPollMinutes: 60,
+  feed: [],
+  blockedIds: [],
+};
+
 export const AI_MUSE_ETHNICITIES: AiMuseEthnicity[] = [
   'any',
   'east-asian',
@@ -515,12 +568,27 @@ export const APP_TEMPLATES: AppTemplate[] = [
     type: 'live-sign',
     category: 'example',
     description: 'Cycle a feed of square SFW AI portraits matched to your look preferences.',
-    icon: '✦',
+    icon: '◇',
+  },
+  {
+    id: 'instagram-feed',
+    name: 'Instagram Feed',
+    type: 'live-sign',
+    category: 'example',
+    description: 'Cycle recent static photos from public Instagram accounts you choose.',
+    icon: '▣',
   },
 ];
 
 export function getAppTemplate(id: string): AppTemplate | undefined {
   return APP_TEMPLATES.find((t) => t.id === id);
+}
+
+/** Example Live Frame template ids from APP_TEMPLATES (must have create + studio wiring). */
+export function listExampleLiveFrameTemplateIds(): string[] {
+  return APP_TEMPLATES
+    .filter((t) => t.category === 'example' && t.type === 'live-sign')
+    .map((t) => t.id);
 }
 
 export function projectTypeLabel(type: ProjectType): string {
@@ -586,6 +654,24 @@ export function shouldUseAiMuseUi(project: {
   return project.templateId === 'ai-muse';
 }
 
+export function shouldUseInstagramFeedUi(project: {
+  templateId?: string | null;
+}): boolean {
+  return project.templateId === 'instagram-feed';
+}
+
+/**
+ * True for built-in Live Frame examples (Flip Note, Instagram Feed, etc.).
+ * These must never fall through to the blank drawing / live-region editor.
+ */
+export function isPrefabLiveFrame(project: {
+  templateId?: string | null;
+}): boolean {
+  if (!project.templateId) return false;
+  const template = getAppTemplate(project.templateId);
+  return Boolean(template && template.category === 'example' && template.type === 'live-sign');
+}
+
 export function shouldUseFlipNoteUi(project: {
   templateId?: string | null;
   type?: string;
@@ -597,6 +683,7 @@ export function shouldUseFlipNoteUi(project: {
   if (shouldUseDvdScreensaverUi(project)) return false;
   if (shouldUseSpotifyNowPlayingUi(project)) return false;
   if (shouldUseAiMuseUi(project)) return false;
+  if (shouldUseInstagramFeedUi(project)) return false;
   if (project.templateId && LEGACY_FLIP_NOTE_TEMPLATE_IDS.has(project.templateId)) return true;
   if (Array.isArray(project.appConfig?.messages)) return true;
   const type = migrateProjectType(project.type ?? 'animator');
@@ -978,6 +1065,171 @@ export function isAiMuseFeedUrl(url: string): boolean {
   const trimmed = url.trim();
   if (/^https:\/\//i.test(trimmed)) return true;
   return trimmed.startsWith('/api/ai-muse/library/');
+}
+
+/** Normalize a pasted Instagram handle to a bare username. */
+export function normalizeInstagramUsername(raw: string): string | null {
+  let value = raw.trim().replace(/^@+/, '').toLowerCase();
+  // Accept pasted profile URLs.
+  const urlMatch = value.match(
+    /(?:instagram\.com\/)(?:stories\/)?([a-z0-9._]{1,30})(?:\/|$|\?)/i,
+  );
+  if (urlMatch?.[1]) value = urlMatch[1].toLowerCase();
+  if (!/^[a-z0-9._]{1,30}$/.test(value)) return null;
+  if (value.endsWith('.')) return null;
+  return value;
+}
+
+export function isInstagramFeedUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (/^https:\/\//i.test(trimmed)) return true;
+  return trimmed.startsWith('/api/instagram-feed/media/');
+}
+
+function parseInstagramAccounts(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const username = normalizeInstagramUsername(String(item ?? ''));
+    if (!username || seen.has(username)) continue;
+    seen.add(username);
+    out.push(username);
+    if (out.length >= MAX_INSTAGRAM_ACCOUNTS) break;
+  }
+  return out;
+}
+
+function parseInstagramFeed(raw: unknown): InstagramFeedItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: InstagramFeedItem[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const id = typeof row.id === 'string' ? row.id.trim() : String(row.id ?? '').trim();
+    const url = typeof row.url === 'string' ? row.url.trim() : '';
+    const username = normalizeInstagramUsername(String(row.username ?? '')) ?? '';
+    if (!id || !url || !username || seen.has(id) || !isInstagramFeedUrl(url)) continue;
+    const width = Number(row.width);
+    const height = Number(row.height);
+    const takenAt = typeof row.takenAt === 'string' && row.takenAt.trim() ? row.takenAt.trim() : undefined;
+    seen.add(id);
+    out.push({
+      id,
+      username,
+      url,
+      width: Number.isFinite(width) && width > 0 ? Math.round(width) : 1080,
+      height: Number.isFinite(height) && height > 0 ? Math.round(height) : 1080,
+      ...(takenAt ? { takenAt } : {}),
+    });
+    if (out.length >= MAX_INSTAGRAM_FEED) break;
+  }
+  return out;
+}
+
+function parseInstagramBlockedIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const id = typeof item === 'string' ? item.trim() : String(item ?? '').trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= MAX_INSTAGRAM_BLOCKED) break;
+  }
+  return out;
+}
+
+export function normalizeInstagramFeedAppConfig(
+  appConfig: Record<string, unknown> | undefined,
+): InstagramFeedConfig {
+  const raw = appConfig ?? {};
+  const refreshRaw = Number(raw.refreshSeconds ?? DEFAULT_INSTAGRAM_FEED_CONFIG.refreshSeconds);
+  const refreshSeconds = Number.isFinite(refreshRaw)
+    ? Math.max(5, Math.min(120, Math.round(refreshRaw)))
+    : DEFAULT_INSTAGRAM_FEED_CONFIG.refreshSeconds;
+  const pollRaw = Number(raw.feedPollMinutes ?? DEFAULT_INSTAGRAM_FEED_CONFIG.feedPollMinutes);
+  const feedPollMinutes = Number.isFinite(pollRaw)
+    ? Math.max(15, Math.min(24 * 60, Math.round(pollRaw)))
+    : DEFAULT_INSTAGRAM_FEED_CONFIG.feedPollMinutes;
+  return {
+    accounts: parseInstagramAccounts(raw.accounts),
+    refreshSeconds,
+    feedPollMinutes,
+    feed: parseInstagramFeed(raw.feed),
+    blockedIds: parseInstagramBlockedIds(raw.blockedIds),
+  };
+}
+
+/** Square-first, then newer. Used within a single account before mixing. */
+export function rankInstagramFeedItems(items: InstagramFeedItem[]): InstagramFeedItem[] {
+  return [...items].sort((a, b) => {
+    const ratioA = a.height > 0 ? a.width / a.height : 1;
+    const ratioB = b.height > 0 ? b.width / b.height : 1;
+    const squareA = Math.abs(1 - ratioA);
+    const squareB = Math.abs(1 - ratioB);
+    if (squareA !== squareB) return squareA - squareB;
+    const timeA = a.takenAt ? Date.parse(a.takenAt) : 0;
+    const timeB = b.takenAt ? Date.parse(b.takenAt) : 0;
+    return timeB - timeA;
+  });
+}
+
+export function shuffleInstagramFeed(feed: InstagramFeedItem[]): InstagramFeedItem[] {
+  const next = [...feed];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = next[i]!;
+    next[i] = next[j]!;
+    next[j] = tmp;
+  }
+  return next;
+}
+
+/**
+ * Merge multi-account posts into a varied playlist:
+ * square-first within each account, then round-robin across shuffled accounts
+ * so one user doesn't dominate a stretch of the feed.
+ */
+export function mixInstagramFeedItems(items: InstagramFeedItem[]): InstagramFeedItem[] {
+  if (items.length <= 1) return [...items];
+
+  const byUser = new Map<string, InstagramFeedItem[]>();
+  for (const item of items) {
+    const list = byUser.get(item.username) ?? [];
+    list.push(item);
+    byUser.set(item.username, list);
+  }
+
+  // Single account — rank for quality, then shuffle for variety across refreshes.
+  if (byUser.size === 1) {
+    const only = byUser.values().next().value ?? [];
+    return shuffleInstagramFeed(rankInstagramFeedItems(only));
+  }
+
+  const queues = [...byUser.values()].map((list) => rankInstagramFeedItems(list));
+  // Randomize which account leads so refresh doesn't always start with the same handle.
+  for (let i = queues.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = queues[i]!;
+    queues[i] = queues[j]!;
+    queues[j] = tmp;
+  }
+
+  const out: InstagramFeedItem[] = [];
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (const queue of queues) {
+      const next = queue.shift();
+      if (!next) continue;
+      out.push(next);
+      progressed = true;
+    }
+  }
+  return out;
 }
 
 /** Fisher–Yates shuffle; returns a new array. */
