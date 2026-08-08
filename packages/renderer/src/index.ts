@@ -155,6 +155,12 @@ export {
   parseInstagramFeedConfig,
   createInstagramFeedThumbnailPixels,
 } from './instagramFeed/index.js';
+export {
+  renderOnAirBoard,
+  renderOnAirPreview,
+  parseOnAirConfig,
+  createOnAirThumbnailPixels,
+} from './onAir/index.js';
 
 export function compositeFrame(
   base: Frame,

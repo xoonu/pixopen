@@ -14,6 +14,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "generate:font": "node scripts/generate-flip-note-font.mjs",
+    "generate:on-air": "node scripts/generate-on-air-text.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

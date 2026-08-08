@@ -7,6 +7,7 @@ import {
   shouldUseWeatherUi,
   shouldUseDvdScreensaverUi,
   shouldUseSpotifyNowPlayingUi,
+  shouldUseOnAirUi,
   type Frame,
   type LiveArea,
   type Project,
@@ -16,6 +17,7 @@ import {
   compositeFrame,
   createAiMuseThumbnailPixels,
   createInstagramFeedThumbnailPixels,
+  createOnAirThumbnailPixels,
   createSpotifyLogoPixels,
   demoQuotesForConfig,
   demoWeatherSnapshot,
@@ -128,6 +130,14 @@ export function renderProjectCardPreview(project: Project): Frame {
       width: 64,
       height: 64,
       pixels: createInstagramFeedThumbnailPixels(),
+    };
+  }
+
+  if (shouldUseOnAirUi(project)) {
+    return {
+      width: 64,
+      height: 64,
+      pixels: createOnAirThumbnailPixels(),
     };
   }
 

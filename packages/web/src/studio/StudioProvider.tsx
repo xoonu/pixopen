@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CANVAS_SIZE, createEmptyFrame, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type Project, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, createEmptyFrame, normalizeProject, projectTypeLabel as formatProjectTypeLabel, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseOnAirUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type Project, type Rect } from '@pixopen/core';
 import { shouldBlockBlankLiveSignEditor } from '../lib/liveFrameStudios';
 import { api } from '../lib/api';
 import { cloneProject, useProjectHistory } from '../hooks/useProjectHistory';
@@ -210,6 +210,7 @@ export function StudioProvider({
     if (shouldUseSpotifyNowPlayingUi(project)) return;
     if (shouldUseAiMuseUi(project)) return;
     if (shouldUseInstagramFeedUi(project)) return;
+    if (shouldUseOnAirUi(project)) return;
 
     if (!currentFrame) return;
     ctx.putImageData(frameToImageData(currentFrame), 0, 0);
@@ -446,7 +447,8 @@ export function StudioProvider({
       shouldUseDvdScreensaverUi(project) ||
       shouldUseSpotifyNowPlayingUi(project) ||
       shouldUseAiMuseUi(project) ||
-      shouldUseInstagramFeedUi(project)
+      shouldUseInstagramFeedUi(project) ||
+      shouldUseOnAirUi(project)
     ) {
       return [] as StudioTool[];
     }

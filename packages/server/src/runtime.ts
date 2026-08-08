@@ -1,8 +1,8 @@
-import { compositeFrame, parseAiMuseConfig, parseDvdScreensaverConfig, parseFlipNoteConfig, parseInstagramFeedConfig, parseSpotifyNowPlayingConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderAiMuseBoard, renderDvdScreensaverFromSimulator, renderFlipNoteBoard, renderInstagramFeedBoard, renderSpotifyNowPlayingBoard, renderStockTickerBoard, renderWeatherBoard, DvdSimulator, dvdEffectiveSimConfig } from '@pixopen/renderer';
+import { compositeFrame, parseAiMuseConfig, parseDvdScreensaverConfig, parseFlipNoteConfig, parseInstagramFeedConfig, parseOnAirConfig, parseSpotifyNowPlayingConfig, parseStockTickerConfig, parseWeatherFrameConfig, renderAiMuseBoard, renderDvdScreensaverFromSimulator, renderFlipNoteBoard, renderInstagramFeedBoard, renderOnAirBoard, renderSpotifyNowPlayingBoard, renderStockTickerBoard, renderWeatherBoard, DvdSimulator, dvdEffectiveSimConfig } from '@pixopen/renderer';
 import { fetchDataSource, getDataSource } from '@pixopen/datasources';
 import { openPixooStream, type PixooStream } from '@pixopen/device';
 import type { DataSourceResult } from '@pixopen/datasources';
-import { normalizeProject, shouldUseAiMuseUi, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseSpotifyNowPlayingUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type AiMuseSnapshot, type InstagramFeedSnapshot, type Project, type SpotifyNowPlayingSnapshot, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
+import { normalizeProject, shouldUseAiMuseUi, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseOnAirUi, shouldUseSpotifyNowPlayingUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type AiMuseSnapshot, type InstagramFeedSnapshot, type Project, type SpotifyNowPlayingSnapshot, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
 import type { WebSocket } from 'ws';
 import { fetchStockQuotes } from './marketData/quotes.js';
 import { fetchWeatherSnapshot } from './weatherData/index.js';
@@ -58,6 +58,9 @@ const DVD_DEVICE_PUSH_MS = 500;
 const LIVE_SIGN_DEVICE_PUSH_MS = 1000;
 const ANIMATED_TICK_MS = 120;
 const DVD_TICK_MS = 500;
+/** On Air glow pulse — smooth enough without hammering the device. */
+const ON_AIR_TICK_MS = 200;
+const ON_AIR_DEVICE_PUSH_MS = 500;
 /** Gap longer than this (e.g. laptop sleep) — skip catch-up and reopen the stream. */
 const SLEEP_GAP_MS = 5_000;
 const MAX_DVD_ADVANCE_MS = 2_000;
@@ -142,13 +145,17 @@ function isAnimatedLiveSign(project: Project): boolean {
     shouldUseDvdScreensaverUi(project) ||
     shouldUseSpotifyNowPlayingUi(project) ||
     shouldUseAiMuseUi(project) ||
-    shouldUseInstagramFeedUi(project)
+    shouldUseInstagramFeedUi(project) ||
+    shouldUseOnAirUi(project)
   );
 }
 
 function runtimeTiming(project: Project): { tickMs: number; devicePushMs: number } {
   if (shouldUseDvdScreensaverUi(project)) {
     return { tickMs: DVD_TICK_MS, devicePushMs: DVD_DEVICE_PUSH_MS };
+  }
+  if (shouldUseOnAirUi(project)) {
+    return { tickMs: ON_AIR_TICK_MS, devicePushMs: ON_AIR_DEVICE_PUSH_MS };
   }
   if (
     shouldUseSpotifyNowPlayingUi(project) ||
@@ -415,6 +422,12 @@ function renderLiveFrame(
   if (shouldUseInstagramFeedUi(project)) {
     const config = parseInstagramFeedConfig(project.appConfig);
     return renderInstagramFeedBoard(config, instagram);
+  }
+
+  if (shouldUseOnAirUi(project)) {
+    const config = parseOnAirConfig(project.appConfig);
+    const elapsedMs = Date.now() - state.startedAt;
+    return renderOnAirBoard(config, elapsedMs);
   }
 
   if (shouldUseFlipNoteUi(project)) {

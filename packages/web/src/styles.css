@@ -371,6 +371,27 @@
 .dvd-screensaver-sidebar-panel { @apply grid gap-3 pt-4 mt-4 border-t border-border; }
 .dvd-screensaver-sidebar-preview { @apply flex justify-center rounded-lg bg-surface-0 p-3; }
 .sidebar-dvd-screensaver-preview { @apply grid gap-2 justify-items-center; }
+
+.on-air-studio { @apply grid max-w-3xl gap-5; }
+.on-air-preview-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
+.on-air-preview-stage { @apply flex min-h-[120px] justify-center rounded-lg bg-surface-0 p-4; }
+.on-air-preview-canvas { image-rendering: pixelated; @apply rounded border border-border; }
+.on-air-section-title { @apply text-sm font-semibold text-fg m-0; }
+.on-air-controls-panel { @apply grid gap-4; }
+.on-air-preset-chips { @apply flex flex-wrap gap-2; }
+.on-air-preset-chip {
+  @apply rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs font-semibold tracking-wide text-fg transition-colors;
+}
+.on-air-preset-chip:hover { @apply border-fg/30 bg-surface-1; }
+.on-air-preset-chip.is-selected {
+  @apply border-red-700/70 bg-red-950/40 text-red-100;
+}
+.on-air-pulse-toggle { @apply flex items-start gap-2 text-sm m-0 cursor-pointer; }
+.on-air-pulse-toggle input { @apply mt-0.5; }
+.on-air-status-label { @apply text-sm; }
+.on-air-sidebar-panel { @apply grid gap-3 pt-4 mt-4 border-t border-border; }
+.on-air-sidebar-preview { @apply flex justify-center rounded-lg bg-surface-0 p-3; }
+.sidebar-on-air-preview { @apply grid gap-2 justify-items-center; }
 .spotify-now-playing-studio { @apply grid max-w-3xl gap-5; }
 .spotify-now-playing-preview-panel { @apply grid gap-3 rounded-xl border border-border bg-surface-2 p-4; }
 .spotify-now-playing-preview-stage { @apply flex min-h-[120px] justify-center rounded-lg bg-surface-0 p-4; }

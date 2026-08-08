@@ -14,6 +14,7 @@ export const LIVE_FRAME_STUDIO_IDS = [
   'spotify-now-playing',
   'ai-muse',
   'instagram-feed',
+  'on-air',
 ] as const;
 
 export type LiveFrameStudioId = (typeof LIVE_FRAME_STUDIO_IDS)[number];

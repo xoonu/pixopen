@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Frame, Project } from '@pixopen/core';
-import { getAppTemplate, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
+import { getAppTemplate, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseOnAirUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi } from '@pixopen/core';
 import { api } from '../lib/api';
 import { projectCardFeedImageUrl, renderProjectCardPreview } from '../lib/projectCardPreview';
 import { projectTypeBadgeClass, projectTypeBadgeLabel } from '../lib/projectBadges';
@@ -322,7 +322,7 @@ export function ProjectsPage({ deviceIp, onDeviceIpChange, onOpen, refreshKey = 
 
                   <p className="text-xs text-muted">
                     {project.frames.length} frame{project.frames.length === 1 ? '' : 's'}
-                    {project.type === 'live-sign' && !shouldUseFlipNoteUi(project) && !shouldUseStockTickerUi(project) && !shouldUseWeatherUi(project) && !shouldUseDvdScreensaverUi(project) && !shouldUseSpotifyNowPlayingUi(project) && !shouldUseAiMuseUi(project) && !shouldUseInstagramFeedUi(project)
+                    {project.type === 'live-sign' && !shouldUseFlipNoteUi(project) && !shouldUseStockTickerUi(project) && !shouldUseWeatherUi(project) && !shouldUseDvdScreensaverUi(project) && !shouldUseSpotifyNowPlayingUi(project) && !shouldUseAiMuseUi(project) && !shouldUseInstagramFeedUi(project) && !shouldUseOnAirUi(project)
                       ? ` · ${project.liveAreas.length} region${project.liveAreas.length === 1 ? '' : 's'}`
                       : ''}
                     · Updated {formatRelativeDate(project.updatedAt)}

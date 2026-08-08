@@ -171,6 +171,33 @@ export const DEFAULT_DVD_SCREENSAVER_CONFIG: DvdScreensaverConfig = {
   seed: 42_069,
 };
 
+export type OnAirMessage = 'on-air' | 'in-a-meeting' | 'recording' | 'do-not-disturb';
+
+export type OnAirConfig = {
+  message: OnAirMessage;
+  /** Soft glow brightness pulse; on by default. */
+  pulse: boolean;
+};
+
+export const ON_AIR_MESSAGES: OnAirMessage[] = [
+  'on-air',
+  'in-a-meeting',
+  'recording',
+  'do-not-disturb',
+];
+
+export const ON_AIR_MESSAGE_LABELS: Record<OnAirMessage, string> = {
+  'on-air': 'ON AIR',
+  'in-a-meeting': 'IN A MEETING',
+  recording: 'RECORDING',
+  'do-not-disturb': 'DO NOT DISTURB',
+};
+
+export const DEFAULT_ON_AIR_CONFIG: OnAirConfig = {
+  message: 'on-air',
+  pulse: true,
+};
+
 /** Zero-config once Spotify credentials are saved in the project UI. */
 export type SpotifyNowPlayingConfig = Record<string, never>;
 
@@ -578,6 +605,14 @@ export const APP_TEMPLATES: AppTemplate[] = [
     description: 'Cycle recent static photos from public Instagram accounts you choose.',
     icon: '▣',
   },
+  {
+    id: 'on-air',
+    name: 'On Air',
+    type: 'live-sign',
+    category: 'example',
+    description: 'Retro shadow-box status sign — ON AIR, in a meeting, recording, or do not disturb.',
+    icon: '⏺',
+  },
 ];
 
 export function getAppTemplate(id: string): AppTemplate | undefined {
@@ -660,6 +695,12 @@ export function shouldUseInstagramFeedUi(project: {
   return project.templateId === 'instagram-feed';
 }
 
+export function shouldUseOnAirUi(project: {
+  templateId?: string | null;
+}): boolean {
+  return project.templateId === 'on-air';
+}
+
 /**
  * True for built-in Live Frame examples (Flip Note, Instagram Feed, etc.).
  * These must never fall through to the blank drawing / live-region editor.
@@ -684,6 +725,7 @@ export function shouldUseFlipNoteUi(project: {
   if (shouldUseSpotifyNowPlayingUi(project)) return false;
   if (shouldUseAiMuseUi(project)) return false;
   if (shouldUseInstagramFeedUi(project)) return false;
+  if (shouldUseOnAirUi(project)) return false;
   if (project.templateId && LEGACY_FLIP_NOTE_TEMPLATE_IDS.has(project.templateId)) return true;
   if (Array.isArray(project.appConfig?.messages)) return true;
   const type = migrateProjectType(project.type ?? 'animator');
@@ -934,6 +976,18 @@ export function normalizeDvdScreensaverAppConfig(
   const seedRaw = Number(raw.seed ?? DEFAULT_DVD_SCREENSAVER_CONFIG.seed);
   const seed = Number.isFinite(seedRaw) ? Math.floor(seedRaw) : DEFAULT_DVD_SCREENSAVER_CONFIG.seed;
   return { speedPxPerSec, smoothness, logoScale, cornerSensitivity, seed };
+}
+
+export function normalizeOnAirAppConfig(
+  appConfig: Record<string, unknown> | undefined,
+): OnAirConfig {
+  const raw = appConfig ?? {};
+  const messageRaw = String(raw.message ?? DEFAULT_ON_AIR_CONFIG.message);
+  const message: OnAirMessage = ON_AIR_MESSAGES.includes(messageRaw as OnAirMessage)
+    ? (messageRaw as OnAirMessage)
+    : DEFAULT_ON_AIR_CONFIG.message;
+  const pulse = raw.pulse === undefined ? DEFAULT_ON_AIR_CONFIG.pulse : Boolean(raw.pulse);
+  return { message, pulse };
 }
 
 export function normalizeSpotifyNowPlayingAppConfig(

@@ -22,6 +22,7 @@ import {
   PauseIcon,
   PencilIcon,
   PlayIcon,
+  RadioIcon,
   RedoIcon,
   UndoIcon,
   Video01Icon,
@@ -57,6 +58,8 @@ export const icons = {
   aiMuse: AiImageIcon,
   /** Project template: Instagram feed */
   instagramFeed: InstagramIcon,
+  /** Project template: On Air status sign */
+  onAir: RadioIcon,
   /** Editor: pencil tool */
   pencil: PencilIcon,
   /** Editor: eraser tool */

@@ -17,6 +17,7 @@ const TEMPLATE_ICON: Record<string, IconName> = {
   'spotify-now-playing': 'spotifyNowPlaying',
   'ai-muse': 'aiMuse',
   'instagram-feed': 'instagramFeed',
+  'on-air': 'onAir',
   'blank-image-frame': 'imageFrame',
   'blank-animator': 'animator',
 };

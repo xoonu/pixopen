@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
+import { CANVAS_SIZE, clampRect, createEmptyFrame, EDITOR_CANVAS_DISPLAY_PX, shouldUseAiMuseUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseOnAirUi, shouldUseStockTickerUi, shouldUseWeatherUi, shouldUseDvdScreensaverUi, shouldUseSpotifyNowPlayingUi, type Frame, type LiveArea, type Rect } from '@pixopen/core';
 import { api } from '../lib/api';
 import { shouldBlockBlankLiveSignEditor } from '../lib/liveFrameStudios';
 import { ControlSection, Field } from './ControlSection';
@@ -22,6 +22,8 @@ import { AiMusePanel } from './AiMusePanel';
 import { AiMuseStudio } from './AiMuseStudio';
 import { InstagramFeedPanel } from './InstagramFeedPanel';
 import { InstagramFeedStudio } from './InstagramFeedStudio';
+import { OnAirPanel } from './OnAirPanel';
+import { OnAirStudio } from './OnAirStudio';
 import { MissingLiveFrameStudio } from './MissingLiveFrameStudio';
 import { StudioChrome } from './StudioChrome';
 import { SequencePreview } from './SequencePreview';
@@ -126,9 +128,10 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
   const isSpotify = shouldUseSpotifyNowPlayingUi(project);
   const isAiMuse = shouldUseAiMuseUi(project);
   const isInstagram = shouldUseInstagramFeedUi(project);
+  const isOnAir = shouldUseOnAirUi(project);
   const isImageFrame = project.type === 'image-frame';
   const isAnimator = project.type === 'animator';
-  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather && !isDvd && !isSpotify && !isAiMuse && !isInstagram;
+  const isLiveSign = project.type === 'live-sign' && !isFlipNote && !isStockTicker && !isWeather && !isDvd && !isSpotify && !isAiMuse && !isInstagram && !isOnAir;
   const showToolbar = drawingTools.length > 0;
   const imageMode = String(project.appConfig?.mode ?? 'slideshow') as 'single' | 'slideshow';
 
@@ -267,6 +270,25 @@ export function StudioPage({ deviceIp }: StudioPageProps) {
         </aside>
         <main className="studio-main-panel min-w-0">
           <InstagramFeedStudio project={project} onChange={handleInstagramChange} />
+        </main>
+      </div>
+    );
+  }
+
+  if (isOnAir) {
+    const handleOnAirChange = (appConfig: Record<string, unknown>) => {
+      setProject((prev) => (prev ? { ...prev, appConfig: { ...prev.appConfig, ...appConfig } } : prev));
+      syncLiveSignToRuntime(project.id, appConfig);
+    };
+
+    return (
+      <div className="studio-page studio-workspace-layout">
+        <aside className="studio-sidebar" aria-label="Project sidebar">
+          <StudioChrome deviceIp={deviceIp} />
+          <OnAirPanel project={project} />
+        </aside>
+        <main className="studio-main-panel min-w-0">
+          <OnAirStudio project={project} onChange={handleOnAirChange} />
         </main>
       </div>
     );
