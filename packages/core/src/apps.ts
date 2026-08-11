@@ -13,6 +13,9 @@ export type AppTemplate = {
 
 export type FlipNoteTextAlign = 'left' | 'center' | 'right';
 
+/** Pixel = Bitcount-style dots; Figtree = soft Bold sans (cleaner at 64×64). */
+export type FlipNoteFontStyle = 'pixel' | 'figtree';
+
 export type FlipNoteBackgroundMode = 'solid' | 'gradient';
 
 /** Anchor point for the gradient line (start color sits toward the angle origin). */
@@ -36,6 +39,8 @@ export type FlipNoteConfig = {
   boardLines: 1 | 2 | 3;
   /** Horizontal alignment of each message row on the board. */
   textAlign: FlipNoteTextAlign;
+  /** Typeface for message letters. */
+  fontStyle: FlipNoteFontStyle;
   /** Hex color for message letters. */
   textColor: string;
   backgroundMode: FlipNoteBackgroundMode;
@@ -47,6 +52,9 @@ export type FlipNoteConfig = {
   backgroundGradientAngle: number;
   backgroundGradientOrigin: FlipNoteGradientOrigin;
   holdMs: number;
+  /**
+   * @deprecated Unused — messages hard-cut on holdMs (kept for older project JSON).
+   */
   flipMs: number;
 };
 
@@ -506,6 +514,7 @@ export const DEFAULT_FLIP_NOTE_CONFIG: FlipNoteConfig = {
   messages: ['HELLO', 'PIXOPEN', 'WELCOME'],
   boardLines: 1,
   textAlign: 'left',
+  fontStyle: 'pixel',
   textColor: '#f4e4bc',
   backgroundMode: 'solid',
   backgroundColor: '#12141c',
@@ -856,6 +865,10 @@ export function normalizeFlipNoteAppConfig(appConfig: Record<string, unknown> | 
   const alignRaw = String(raw.textAlign ?? DEFAULT_FLIP_NOTE_CONFIG.textAlign);
   const textAlign =
     alignRaw === 'center' || alignRaw === 'right' ? alignRaw : 'left';
+  const fontRaw = String(raw.fontStyle ?? DEFAULT_FLIP_NOTE_CONFIG.fontStyle);
+  // Legacy projects saved `quicksand` before Figtree replaced it.
+  const fontStyle: FlipNoteFontStyle =
+    fontRaw === 'figtree' || fontRaw === 'quicksand' ? 'figtree' : 'pixel';
   const backgroundMode = String(raw.backgroundMode ?? DEFAULT_FLIP_NOTE_CONFIG.backgroundMode) === 'gradient'
     ? 'gradient'
     : 'solid';
@@ -875,6 +888,7 @@ export function normalizeFlipNoteAppConfig(appConfig: Record<string, unknown> | 
     messages: messages.length > 0 ? messages : [...DEFAULT_FLIP_NOTE_CONFIG.messages],
     boardLines,
     textAlign,
+    fontStyle,
     textColor,
     backgroundMode,
     backgroundColor,

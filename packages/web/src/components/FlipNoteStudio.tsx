@@ -68,13 +68,13 @@ export function FlipNoteStudio({ project, onChange }: Props) {
     applyConfig({ ...config, messages: blocksToMessages(nextBlocks) });
   };
 
-  const updateTiming = (patch: Partial<Pick<FlipNoteConfig, 'holdMs' | 'flipMs'>>) => {
+  const updateTiming = (patch: Partial<Pick<FlipNoteConfig, 'holdMs'>>) => {
     applyConfig({ ...config, ...patch });
   };
 
   return (
     <div className="flip-note-studio">
-      <section className="flip-note-preview-panel" aria-label="Animation preview">
+      <section className="flip-note-preview-panel" aria-label="Message preview">
         <div className="flip-note-preview-toolbar">
           <span className="field-label">Preview</span>
           <div className="flip-note-preview-controls">
@@ -83,7 +83,7 @@ export function FlipNoteStudio({ project, onChange }: Props) {
               className="btn btn-primary btn-sm"
               onClick={() => setPreviewPlaying((p) => !p)}
             >
-              {previewPlaying ? 'Pause' : 'Play'} animation
+              {previewPlaying ? 'Pause' : 'Play'}
             </button>
           </div>
         </div>
@@ -96,8 +96,8 @@ export function FlipNoteStudio({ project, onChange }: Props) {
         </div>
         <p className="muted flip-note-preview-hint">
           {previewPlaying
-            ? 'Animation is running — edit messages anytime to update the preview.'
-            : 'Paused — click Play to see messages refresh.'}
+            ? 'Cycling messages — edits update the preview live.'
+            : 'Paused — click Play to cycle messages.'}
         </p>
       </section>
 
@@ -153,17 +153,6 @@ export function FlipNoteStudio({ project, onChange }: Props) {
             value={config.holdMs / 1000}
             formatValue={(v) => `${v}s`}
             onChange={(sec) => updateTiming({ holdMs: Math.round(sec * 1000) })}
-          />
-        </Field>
-        <Field label="Refresh animation (seconds)" htmlFor="flip-note-flip-sec">
-          <NumberSlider
-            id="flip-note-flip-sec"
-            min={0.1}
-            max={3}
-            step={0.05}
-            value={config.flipMs / 1000}
-            formatValue={(v) => `${v.toFixed(2)}s`}
-            onChange={(sec) => updateTiming({ flipMs: Math.round(sec * 1000) })}
           />
         </Field>
       </section>

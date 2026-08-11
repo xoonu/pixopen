@@ -303,6 +303,14 @@
 .flip-note-color-picker-row { @apply flex items-center gap-2; }
 .flip-note-color-picker-row input[type="color"] { @apply size-9 cursor-pointer rounded p-0.5; }
 .flip-note-color-picker-row input[type="text"] { @apply flex-1 font-mono; }
+.flip-note-font-chips { @apply flex flex-wrap gap-2; }
+.flip-note-font-chip {
+  @apply rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs font-semibold tracking-wide text-fg transition-colors;
+}
+.flip-note-font-chip:hover { @apply border-fg/30 bg-surface-1; }
+.flip-note-font-chip.is-selected {
+  @apply border-fg/50 bg-surface-1 text-fg;
+}
 .flip-note-messages-header { @apply flex items-center justify-between gap-3; }
 .flip-note-message-list { @apply grid gap-3; }
 .flip-note-message-block { @apply grid gap-2 rounded-xl border border-border bg-surface-2 p-3; }

@@ -18,87 +18,35 @@ function chunkMessages(messages: string[], boardLines: number): string[][] {
   return frames.length > 0 ? frames : [[padMessage('PIXOPEN')]];
 }
 
+/** All message frames for the board (each frame is `boardLines` padded rows). */
+export function messageFrames(config: FlipNoteConfig): string[][] {
+  return chunkMessages(config.messages, config.boardLines ?? 1);
+}
+
 export type RefreshCell = {
   /** Character to draw (ignored when blank). */
   char: string;
-  /** Which character's pixel width sets this slot (target during refresh). */
+  /** Which character's pixel width sets this slot. */
   slotChar: string;
-  /** Brief blank flash mid-refresh. */
+  /** Reserved — Flip Note no longer uses mid-transition blanks. */
   blank: boolean;
 };
 
-/** Per-cell refresh: old → blank → new, staggered left-to-right. */
-function refreshCell(from: string, to: string, progress: number | null): RefreshCell {
-  if (progress === null || from === to) return { char: to, slotChar: to, blank: false };
-  if (progress < 0.35) return { char: from, slotChar: to, blank: false };
-  if (progress < 0.55) return { char: to, slotChar: to, blank: true };
-  return { char: to, slotChar: to, blank: false };
+function cellsForFrame(frame: string[]): RefreshCell[][] {
+  return frame.map((line) =>
+    [...line].map((ch) => ({ char: ch, slotChar: ch, blank: false })),
+  );
 }
 
+/**
+ * Hard-cut between message frames. No staggered flip — Pixoo refresh is too
+ * coarse for per-cell blank animation.
+ */
 export function messageTiming(config: FlipNoteConfig, elapsedMs: number): RefreshCell[][] {
-  const boardLines = config.boardLines ?? 1;
-  const frames = chunkMessages(config.messages, boardLines);
+  const frames = messageFrames(config);
   const holdMs = Math.max(500, config.holdMs);
-  const refreshMs = Math.max(100, config.flipMs);
-  const cycleMs = frames.length * (holdMs + refreshMs);
-  const t = elapsedMs % cycleMs;
-
-  let acc = 0;
-  for (let i = 0; i < frames.length; i++) {
-    const holdEnd = acc + holdMs;
-    const refreshEnd = holdEnd + refreshMs;
-    if (t < refreshEnd) {
-      const prev = frames[(i - 1 + frames.length) % frames.length];
-      const next = frames[i];
-      if (t < holdEnd) {
-        return next.map((line) => [...line].map((ch) => ({ char: ch, slotChar: ch, blank: false })));
-      }
-
-      const elapsedRefresh = t - holdEnd;
-      const changing: { row: number; col: number }[] = [];
-      for (let row = 0; row < boardLines; row++) {
-        for (let col = 0; col < COLS; col++) {
-          const from = prev[row]?.[col] ?? ' ';
-          const to = next[row]?.[col] ?? ' ';
-          if (from !== to) changing.push({ row, col });
-        }
-      }
-
-      const perCellMs = changing.length > 0 ? refreshMs / changing.length : refreshMs;
-      const slotByKey = new Map<string, number>();
-      changing.forEach(({ row, col }, index) => slotByKey.set(`${row}:${col}`, index));
-
-      const rows: RefreshCell[][] = [];
-      for (let row = 0; row < boardLines; row++) {
-        const cells: RefreshCell[] = [];
-        for (let col = 0; col < COLS; col++) {
-          const from = prev[row]?.[col] ?? ' ';
-          const to = next[row]?.[col] ?? ' ';
-          const slot = slotByKey.get(`${row}:${col}`);
-          if (slot === undefined) {
-            cells.push({ char: to, slotChar: to, blank: false });
-            continue;
-          }
-          const slotStart = slot * perCellMs;
-          const slotEnd = slotStart + perCellMs;
-          if (elapsedRefresh < slotStart) {
-            cells.push({ char: from, slotChar: to, blank: false });
-          } else if (elapsedRefresh >= slotEnd) {
-            cells.push({ char: to, slotChar: to, blank: false });
-          } else {
-            const progress = (elapsedRefresh - slotStart) / perCellMs;
-            cells.push(refreshCell(from, to, progress));
-          }
-        }
-        rows.push(cells);
-      }
-      return rows;
-    }
-    acc = refreshEnd;
-  }
-
-  const fallback = frames[0];
-  return fallback.map((line) => [...line].map((ch) => ({ char: ch, slotChar: ch, blank: false })));
+  const index = Math.floor(elapsedMs / holdMs) % frames.length;
+  return cellsForFrame(frames[index] ?? frames[0]);
 }
 
 export function parseFlipNoteConfig(raw: Record<string, unknown> | undefined): FlipNoteConfig {

@@ -7,7 +7,14 @@ export const BEZEL = 1;
 export const INNER = CANVAS_SIZE - BEZEL * 2;
 export const BEZEL_COLOR: [number, number, number] = [6, 7, 10];
 
-/** Gap between characters in screen pixels. */
+/**
+ * Keep lettering off the bezel — usable text width is INNER − 2×TEXT_INSET.
+ * Wide soft-font rows autoscale into this band.
+ */
+export const TEXT_INSET = 3;
+export const TEXT_AREA = INNER - TEXT_INSET * 2;
+
+/** Gap between characters in screen pixels (at scale 1). */
 export const CHAR_GAP = 1;
 
 /**
@@ -22,11 +29,12 @@ export const DOT_ROWS = LINE_HEIGHT;
 
 export const ROW_HEIGHT = LINE_HEIGHT;
 
-export function boardLayout(boardLines: 1 | 2 | 3) {
+export function boardLayout(boardLines: 1 | 2 | 3, rowHeight: number = ROW_HEIGHT) {
   const rowGap = boardLines > 1 ? 2 : 0;
-  const gridH = boardLines * ROW_HEIGHT + (boardLines - 1) * rowGap;
+  const gridH = boardLines * rowHeight + (boardLines - 1) * rowGap;
   return {
     rowGap,
+    rowHeight,
     boardY: BEZEL + Math.floor((INNER - gridH) / 2),
   };
 }

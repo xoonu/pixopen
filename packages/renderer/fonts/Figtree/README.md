@@ -1,12 +1,13 @@
-# Figtree (Flip Note glyphs)
+# Figtree (Flip Note soft font)
 
-Flip Note rasterizes **Figtree** (weight 700) into fixed 6×12 pixel tiles for the Pixoo display.
+Flip Note’s **Figtree** option rasterizes Figtree Bold into soft alpha glyphs for the Pixoo display. Cleaner at small sizes than Quicksand’s rounded forms.
 
 - Font: [Figtree on Google Fonts](https://fonts.google.com/specimen/Figtree)
+- File: `Figtree.ttf` (variable; generator uses weight 700)
 - License: [SIL Open Font License 1.1](OFL.txt)
 
-Regenerate glyph bitmaps after changing tile size or font:
+Regenerate glyphs after changing size or weight:
 
 ```bash
-npm run generate:font -w @pixopen/renderer
+npm run generate:flip-note-figtree -w @pixopen/renderer
 ```

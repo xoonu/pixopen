@@ -2,6 +2,7 @@ import {
   normalizeFlipNoteAppConfig,
   type FlipNoteBackgroundMode,
   type FlipNoteConfig,
+  type FlipNoteFontStyle,
   type FlipNoteGradientOrigin,
   type FlipNoteTextAlign,
   type Project,
@@ -112,6 +113,29 @@ export function FlipNoteBoardPanel({ project, onChange }: Props) {
             <option value="center">Center</option>
             <option value="right">Right</option>
           </select>
+        </Field>
+        <Field label="Font" hint="Wide lines shrink to fit with a side margin.">
+          <div className="flip-note-font-chips" role="group" aria-label="Font style">
+            {(
+              [
+                { id: 'pixel', label: 'Pixel' },
+                { id: 'figtree', label: 'Figtree' },
+              ] as const satisfies ReadonlyArray<{ id: FlipNoteFontStyle; label: string }>
+            ).map((opt) => {
+              const selected = config.fontStyle === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`flip-note-font-chip${selected ? ' is-selected' : ''}`}
+                  aria-pressed={selected}
+                  onClick={() => applyConfig({ ...config, fontStyle: opt.id })}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </Field>
         <HexColorField
           id="flip-note-text-color"
