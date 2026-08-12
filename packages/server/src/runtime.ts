@@ -2,7 +2,7 @@ import { compositeFrame, parseAiMuseConfig, parseDvdScreensaverConfig, parseFlip
 import { fetchDataSource, getDataSource } from '@pixopen/datasources';
 import { openPixooStream, type PixooStream } from '@pixopen/device';
 import type { DataSourceResult } from '@pixopen/datasources';
-import { normalizeProject, shouldUseAiMuseUi, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseOnAirUi, shouldUseSpotifyNowPlayingUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, type AiMuseSnapshot, type InstagramFeedSnapshot, type Project, type SpotifyNowPlayingSnapshot, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
+import { normalizeProject, shouldUseAiMuseUi, shouldUseDvdScreensaverUi, shouldUseFlipNoteUi, shouldUseInstagramFeedUi, shouldUseOnAirUi, shouldUseSpotifyNowPlayingUi, shouldUseStockTickerUi, shouldUseWeatherUi, stockTickerQuoteSymbols, weatherFrameLocations, type AiMuseSnapshot, type InstagramFeedSnapshot, type Project, type SpotifyNowPlayingSnapshot, type StockQuoteSnapshot, type WeatherSnapshot } from '@pixopen/core';
 import type { WebSocket } from 'ws';
 import { fetchStockQuotes } from './marketData/quotes.js';
 import { fetchWeatherSnapshot } from './weatherData/index.js';
@@ -35,7 +35,7 @@ type RuntimeState = {
   quotes: StockQuoteSnapshot[];
   quotesKey: string;
   quotesFetchedAt: number;
-  weatherSnapshot: WeatherSnapshot | null;
+  weatherSnapshots: WeatherSnapshot[];
   weatherKey: string;
   weatherFetchedAt: number;
   spotifySnapshot: SpotifyNowPlayingSnapshot | null;
@@ -192,27 +192,32 @@ async function refreshQuotesIfNeeded(state: RuntimeState): Promise<StockQuoteSna
   return result.quotes;
 }
 
-async function refreshWeatherIfNeeded(state: RuntimeState): Promise<WeatherSnapshot | null> {
+async function refreshWeatherIfNeeded(state: RuntimeState): Promise<WeatherSnapshot[]> {
   const config = parseWeatherFrameConfig(state.project.appConfig);
-  if (!config.location) return null;
+  const locations = weatherFrameLocations(config);
+  if (locations.length === 0) {
+    state.weatherSnapshots = [];
+    return [];
+  }
   const key = JSON.stringify({
-    lat: config.location.lat,
-    lon: config.location.lon,
+    locations: locations.map((loc) => ({ lat: loc.lat, lon: loc.lon })),
     unit: config.temperatureUnit,
   });
   const now = Date.now();
   if (
     state.weatherKey === key &&
-    state.weatherSnapshot &&
+    state.weatherSnapshots.length > 0 &&
     now - state.weatherFetchedAt < WEATHER_REFRESH_MS
   ) {
-    return state.weatherSnapshot;
+    return state.weatherSnapshots;
   }
-  const snapshot = await fetchWeatherSnapshot(config.location, config.temperatureUnit);
-  state.weatherSnapshot = snapshot;
+  const snapshots = await Promise.all(
+    locations.map((loc) => fetchWeatherSnapshot(loc, config.temperatureUnit)),
+  );
+  state.weatherSnapshots = snapshots;
   state.weatherKey = key;
   state.weatherFetchedAt = now;
-  return snapshot;
+  return snapshots;
 }
 
 async function refreshSpotifyIfNeeded(state: RuntimeState): Promise<SpotifyNowPlayingSnapshot | null> {
@@ -383,7 +388,7 @@ function renderLiveFrame(
   state: RuntimeState,
   values: Map<string, DataSourceResult>,
   quotes: StockQuoteSnapshot[],
-  weather: WeatherSnapshot | null,
+  weather: WeatherSnapshot[],
   spotify: SpotifyNowPlayingSnapshot | null,
   aiMuse: AiMuseSnapshot | null,
   instagram: InstagramFeedSnapshot | null,
@@ -467,7 +472,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
     quotes: [],
     quotesKey: '',
     quotesFetchedAt: 0,
-    weatherSnapshot: null,
+    weatherSnapshots: [],
     weatherKey: '',
     weatherFetchedAt: 0,
     spotifySnapshot: null,
@@ -544,7 +549,7 @@ export async function startRuntime(project: Project, deviceIp: string) {
       }
       const values = new Map<string, DataSourceResult>();
       let quotes: StockQuoteSnapshot[] = [];
-      let weather: WeatherSnapshot | null = null;
+      let weather: WeatherSnapshot[] = [];
       let spotify: SpotifyNowPlayingSnapshot | null = null;
       let aiMuse: AiMuseSnapshot | null = null;
       let instagram: InstagramFeedSnapshot | null = null;

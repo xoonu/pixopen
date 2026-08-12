@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  MAX_WEATHER_LOCATIONS,
   normalizeWeatherFrameAppConfig,
   type WeatherFrameConfig,
   type WeatherLocation,
   type Project,
 } from '@pixopen/core';
 import { Field } from './ControlSection';
+import { NumberSlider } from './NumberSlider';
 import { WeatherPreview } from './WeatherPreview';
 import { api } from '../lib/api';
 
@@ -19,6 +21,10 @@ function formatLocationLabel(loc: WeatherLocation): string {
   if (loc.admin1) parts.push(loc.admin1);
   if (loc.country) parts.push(loc.country);
   return parts.join(', ');
+}
+
+function locationKey(loc: WeatherLocation): string {
+  return `${loc.lat.toFixed(4)}:${loc.lon.toFixed(4)}`;
 }
 
 const PREVIEW_SCALE = 8;
@@ -70,15 +76,26 @@ export function WeatherStudio({ project, onChange }: Props) {
     };
   }, [searchQuery]);
 
-  const selectLocation = (loc: WeatherLocation) => {
-    applyConfig({ ...config, location: loc });
+  const addLocation = (loc: WeatherLocation) => {
+    if (config.locations.length >= MAX_WEATHER_LOCATIONS) return;
+    const key = locationKey(loc);
+    if (config.locations.some((entry) => locationKey(entry) === key)) {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+    applyConfig({ ...config, locations: [...config.locations, loc] });
     setSearchQuery('');
     setSearchResults([]);
     setSearchOpen(false);
   };
 
-  const clearLocation = () => {
-    applyConfig({ ...config, location: undefined });
+  const removeLocation = (index: number) => {
+    applyConfig({
+      ...config,
+      locations: config.locations.filter((_, i) => i !== index),
+    });
   };
 
   return (
@@ -91,19 +108,34 @@ export function WeatherStudio({ project, onChange }: Props) {
       </section>
 
       <section className="weather-frame-location-panel">
-        <h3 className="weather-frame-section-title">Location</h3>
-        {config.location ? (
-          <div className="weather-frame-location-chip">
-            <span>{formatLocationLabel(config.location)}</span>
-            <button type="button" className="btn btn-ghost btn-xs" onClick={clearLocation}>
-              Remove
-            </button>
-          </div>
+        <div className="weather-frame-location-header">
+          <h3 className="weather-frame-section-title">Locations</h3>
+          <span className="muted text-xs">
+            {config.locations.length}/{MAX_WEATHER_LOCATIONS}
+          </span>
+        </div>
+        {config.locations.length === 0 ? (
+          <p className="muted weather-frame-location-hint">
+            Search and add cities — the board cycles through them.
+          </p>
         ) : (
-          <p className="muted weather-frame-location-hint">Search for a city or place to show weather.</p>
+          <ul className="weather-frame-location-list">
+            {config.locations.map((loc, index) => (
+              <li key={`${locationKey(loc)}-${index}`} className="weather-frame-location-chip">
+                <span>{formatLocationLabel(loc)}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => removeLocation(index)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
         <div className="weather-frame-search-wrap" ref={searchWrapRef}>
-          <Field label="Search" htmlFor="weather-location-search">
+          <Field label="Add location" htmlFor="weather-location-search">
             <input
               id="weather-location-search"
               type="search"
@@ -111,6 +143,7 @@ export function WeatherStudio({ project, onChange }: Props) {
               placeholder="Brooklyn, London, Tokyo…"
               value={searchQuery}
               autoComplete="off"
+              disabled={config.locations.length >= MAX_WEATHER_LOCATIONS}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
             />
@@ -124,7 +157,7 @@ export function WeatherStudio({ project, onChange }: Props) {
                     type="button"
                     role="option"
                     className="weather-frame-search-result"
-                    onClick={() => selectLocation(loc)}
+                    onClick={() => addLocation(loc)}
                   >
                     {formatLocationLabel(loc)}
                   </button>
@@ -139,7 +172,7 @@ export function WeatherStudio({ project, onChange }: Props) {
       </section>
 
       <section className="weather-frame-display-panel">
-        <h3 className="weather-frame-section-title">Units</h3>
+        <h3 className="weather-frame-section-title">Display</h3>
         <Field label="Temperature scale" htmlFor="weather-temp-unit">
           <select
             id="weather-temp-unit"
@@ -156,9 +189,26 @@ export function WeatherStudio({ project, onChange }: Props) {
             <option value="celsius">Celsius</option>
           </select>
         </Field>
-        <p className="muted text-xs m-0 mt-2">
-          Shows current temperature, conditions, humidity, and wind for your location.
-        </p>
+        <Field
+          label="Seconds per location"
+          htmlFor="weather-hold-sec"
+          hint={
+            config.locations.length <= 1
+              ? 'Add more locations to cycle the board.'
+              : undefined
+          }
+        >
+          <NumberSlider
+            id="weather-hold-sec"
+            min={3}
+            max={15}
+            step={0.5}
+            value={config.holdMs / 1000}
+            formatValue={(v) => `${v}s`}
+            disabled={config.locations.length <= 1}
+            onChange={(sec) => applyConfig({ ...config, holdMs: Math.round(sec * 1000) })}
+          />
+        </Field>
       </section>
     </div>
   );

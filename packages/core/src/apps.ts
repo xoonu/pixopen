@@ -123,12 +123,21 @@ export type WeatherFrameColors = {
 };
 
 export type WeatherFrameConfig = {
+  /**
+   * @deprecated Prefer `locations`. Older projects may still store a single location here;
+   * normalize migrates it into `locations`.
+   */
   location?: WeatherLocation;
+  /** Places to cycle on the board (order preserved). */
+  locations: WeatherLocation[];
   temperatureUnit: WeatherTemperatureUnit;
+  /** How long each location stays on screen before the next. */
   holdMs: number;
   theme: WeatherFrameTheme;
   colors: WeatherFrameColors;
 };
+
+export const MAX_WEATHER_LOCATIONS = 8;
 
 export type WeatherCurrentSnapshot = {
   temp: number;
@@ -504,6 +513,7 @@ const DEFAULT_WEATHER_FRAME_COLORS: WeatherFrameColors = {
 };
 
 export const DEFAULT_WEATHER_FRAME_CONFIG: WeatherFrameConfig = {
+  locations: [],
   temperatureUnit: 'fahrenheit',
   holdMs: 6000,
   theme: 'sky',
@@ -665,7 +675,20 @@ export function shouldUseStockTickerUi(project: {
   return Array.isArray(project.appConfig?.symbols);
 }
 
+function locationKey(loc: WeatherLocation): string {
+  return `${loc.lat.toFixed(4)}:${loc.lon.toFixed(4)}`;
+}
+
+/** Resolved location list (supports legacy single `location`). */
+export function weatherFrameLocations(config: WeatherFrameConfig): WeatherLocation[] {
+  if (config.locations.length > 0) return config.locations;
+  return config.location ? [config.location] : [];
+}
+
 function hasWeatherLocation(appConfig?: Record<string, unknown>): boolean {
+  if (Array.isArray(appConfig?.locations) && appConfig.locations.length > 0) {
+    return appConfig.locations.some((entry) => Boolean(parseWeatherLocation(entry)));
+  }
   const loc = appConfig?.location;
   if (!loc || typeof loc !== 'object') return false;
   const obj = loc as Record<string, unknown>;
@@ -946,7 +969,22 @@ export function normalizeWeatherFrameAppConfig(
   appConfig: Record<string, unknown> | undefined,
 ): WeatherFrameConfig {
   const raw = appConfig ?? {};
-  const location = parseWeatherLocation(raw.location);
+  const fromArray = Array.isArray(raw.locations)
+    ? (raw.locations as unknown[])
+        .map((entry) => parseWeatherLocation(entry))
+        .filter((loc): loc is WeatherLocation => Boolean(loc))
+    : [];
+  const legacy = parseWeatherLocation(raw.location);
+  const merged = fromArray.length > 0 ? fromArray : legacy ? [legacy] : [];
+  const seen = new Set<string>();
+  const locations: WeatherLocation[] = [];
+  for (const loc of merged) {
+    const key = locationKey(loc);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    locations.push(loc);
+    if (locations.length >= MAX_WEATHER_LOCATIONS) break;
+  }
   const unitRaw = String(raw.temperatureUnit ?? DEFAULT_WEATHER_FRAME_CONFIG.temperatureUnit);
   const temperatureUnit: WeatherTemperatureUnit = unitRaw === 'celsius' ? 'celsius' : 'fahrenheit';
   const themeRaw = String(raw.theme ?? DEFAULT_WEATHER_FRAME_CONFIG.theme);
@@ -962,7 +1000,7 @@ export function normalizeWeatherFrameAppConfig(
   };
   const holdMs = Number(raw.holdMs ?? DEFAULT_WEATHER_FRAME_CONFIG.holdMs);
   return {
-    ...(location ? { location } : {}),
+    locations,
     temperatureUnit,
     holdMs: Number.isFinite(holdMs) ? Math.max(3000, Math.min(15000, holdMs)) : 6000,
     theme,

@@ -1,0 +1,7 @@
+Weather Icons by Erik Flowers
+https://erikflowers.github.io/weather-icons/
+
+This font software is licensed under the SIL Open Font License, Version 1.1.
+https://scripts.sil.org/OFL
+
+Upstream code/CSS is MIT; documentation is CC BY 3.0.

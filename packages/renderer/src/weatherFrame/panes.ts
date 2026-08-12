@@ -1,6 +1,7 @@
 import { CANVAS_SIZE, type WeatherFrameConfig, type WeatherSnapshot } from '@pixopen/core';
 import { drawText, drawTextClipped, fillRect, hexToRgb, textWidth } from './icons.js';
 import { drawWeatherIcon, weatherIconColor } from './icons.js';
+import { drawFigtreeTemp, figtreeTempScale, figtreeTempSize } from './tempText.js';
 import { formatLocationName, wmoShortLabel, wmoToSpriteId } from './wmo.js';
 
 const LOCATION_PAD = 2;
@@ -9,6 +10,7 @@ const ICON_X = 0;
 const ICON_Y = 0;
 const TEMP_COL_X = 34;
 const TEMP_COL_W = CANVAS_SIZE - TEMP_COL_X;
+const TEMP_INSET = 0;
 
 function drawLocationName(
   pixels: number[],
@@ -33,12 +35,6 @@ function drawLocationName(
   const offset = Math.floor(elapsedMs / 40) % loop;
   drawTextClipped(pixels, LOCATION_PAD - offset, y, label, color, 0, CANVAS_SIZE, 1);
   drawTextClipped(pixels, LOCATION_PAD - offset + loop, y, label, color, 0, CANVAS_SIZE, 1);
-}
-
-function tempDisplayScale(temp: number): number {
-  const digits = String(Math.abs(Math.round(temp))).length;
-  if (digits >= 3) return 2;
-  return 3;
 }
 
 export function drawPlaceholderPane(
@@ -77,13 +73,14 @@ export function drawCurrentPane(
     weatherIconColor(spriteId, text),
   );
 
-  const tempStr = String(snapshot.current.temp);
-  const tempScale = tempDisplayScale(snapshot.current.temp);
-  const tempW = textWidth(tempStr, tempScale);
-  const tempH = 5 * tempScale;
-  const tempX = TEMP_COL_X + Math.floor((TEMP_COL_W - tempW) / 2);
+  const tempStr = String(Math.round(snapshot.current.temp));
+  const tempMaxW = TEMP_COL_W - TEMP_INSET * 2;
+  const tempMaxH = HEADER_H - 2;
+  const tempScale = figtreeTempScale(tempStr, tempMaxW, tempMaxH);
+  const { w: tempW, h: tempH } = figtreeTempSize(tempStr, tempScale);
+  const tempX = TEMP_COL_X + TEMP_INSET + Math.floor((tempMaxW - tempW) / 2);
   const tempY = Math.floor((HEADER_H - tempH) / 2);
-  drawText(pixels, tempX, tempY, tempStr, text, tempScale);
+  drawFigtreeTemp(pixels, tempX, tempY, tempStr, text, tempScale);
 
   drawLocationName(pixels, snapshot.location.name, 36, accent, elapsedMs);
 

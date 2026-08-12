@@ -101,7 +101,8 @@ export function renderProjectCardPreview(project: Project): Frame {
 
   if (shouldUseWeatherUi(project)) {
     const config = parseWeatherFrameConfig(project.appConfig);
-    const snapshot = config.location ? demoWeatherSnapshot(config) : null;
+    const locs = config.locations.length > 0 ? config.locations : [];
+    const snapshot = locs.length > 0 ? demoWeatherSnapshot(config) : null;
     return renderWeatherPreview(project.appConfig, snapshot, 0);
   }
 

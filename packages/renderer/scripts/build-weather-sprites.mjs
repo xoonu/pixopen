@@ -1,54 +1,128 @@
-import fs from 'node:fs';
-import path from 'node:path';
+/**
+ * Bake soft 32×32 Weather Icons (Erik Flowers) alpha sprites for the weather frame.
+ * Run: npm run generate:weather-sprites -w @pixopen/renderer
+ */
+import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
+import { writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const xbmDir = path.join(__dirname, '../third_party/weather-pixel-icons/32');
-const outFile = path.join(__dirname, '../src/weatherFrame/spriteData.ts');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, '..');
+const FONT_PATH = join(ROOT, 'fonts/WeatherIcons/weathericons-regular-webfont.ttf');
+const OUT_PATH = join(ROOT, 'src/weatherFrame/spriteData.ts');
 
-const SPRITE_IDS = [
-  'sun',
-  'cloud_sun',
-  'clouds',
-  'cloud',
-  'rain0',
-  'rain1',
-  'rain2',
-  'snow',
-  'rain_lightning',
-  'wind',
-];
+const SIZE = 32;
+const SUPER = 8;
+const HI = SIZE * SUPER;
 
-function parseXbm(content) {
-  const width = Number(content.match(/_width\s+(\d+)/)?.[1] ?? 32);
-  const height = Number(content.match(/_height\s+(\d+)/)?.[1] ?? 32);
-  const body = content.match(/\{([^}]+)\}/s)?.[1] ?? '';
-  const bytes = body
-    .split(',')
-    .map((part) => parseInt(part.trim(), 0))
-    .filter((value) => Number.isFinite(value));
-  const rowBytes = Math.ceil(width / 8);
-  const mask = [];
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const byteIndex = y * rowBytes + Math.floor(x / 8);
-      const bitIndex = x % 8;
-      mask.push(bytes[byteIndex] & (1 << bitIndex) ? 1 : 0);
+/** Private-use glyphs from weather-icons.css */
+const GLYPHS = {
+  sun: '\uf00d', // wi-day-sunny
+  cloud_sun: '\uf002', // wi-day-cloudy
+  clouds: '\uf013', // wi-cloudy
+  cloud: '\uf041', // wi-cloud
+  wind: '\uf014', // wi-fog (fog codes)
+  rain0: '\uf01c', // wi-sprinkle
+  rain1: '\uf019', // wi-rain
+  rain2: '\uf01a', // wi-showers
+  snow: '\uf01b', // wi-snow
+  rain_lightning: '\uf01e', // wi-thunderstorm
+};
+
+const SPRITE_IDS = Object.keys(GLYPHS);
+
+GlobalFonts.registerFromPath(FONT_PATH, 'WeatherIcons');
+
+function downsampleAlpha(data, srcW, srcH, dstW, dstH) {
+  const alpha = new Array(dstW * dstH);
+  const scaleX = srcW / dstW;
+  const scaleY = srcH / dstH;
+  for (let ty = 0; ty < dstH; ty++) {
+    for (let tx = 0; tx < dstW; tx++) {
+      let sum = 0;
+      let count = 0;
+      const x0 = Math.floor(tx * scaleX);
+      const y0 = Math.floor(ty * scaleY);
+      const x1 = Math.min(srcW, Math.ceil((tx + 1) * scaleX));
+      const y1 = Math.min(srcH, Math.ceil((ty + 1) * scaleY));
+      for (let sy = y0; sy < y1; sy++) {
+        for (let sx = x0; sx < x1; sx++) {
+          const i = (sy * srcW + sx) * 4;
+          const a = data[i + 3];
+          const lum = Math.max(data[i], data[i + 1], data[i + 2]);
+          sum += Math.max(a, lum);
+          count += 1;
+        }
+      }
+      let v = count ? sum / count : 0;
+      // Mild contrast so mid greys don’t mush on Pixoo
+      v = Math.min(255, Math.round(Math.pow(v / 255, 0.82) * 255));
+      alpha[ty * dstW + tx] = v;
     }
   }
-  return { width, height, mask };
+  return alpha;
 }
 
+function fitFontPx(ch) {
+  const probe = createCanvas(8, 8).getContext('2d');
+  const pad = Math.round(HI * 0.08);
+  const max = HI - pad * 2;
+  let lo = 40;
+  let hi = 420;
+  let best = lo;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    probe.font = `${mid}px WeatherIcons`;
+    const m = probe.measureText(ch);
+    const w = m.width;
+    const h =
+      (m.actualBoundingBoxAscent ?? mid * 0.8) + (m.actualBoundingBoxDescent ?? mid * 0.2);
+    if (w <= max && h <= max) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return best;
+}
+
+function renderGlyph(ch) {
+  const fontPx = fitFontPx(ch);
+  const canvas = createCanvas(HI, HI);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, HI, HI);
+  ctx.imageSmoothingEnabled = true;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${fontPx}px WeatherIcons`;
+  ctx.fillStyle = '#ffffff';
+  // Slight stroke helps thin Weather Icons strokes survive downsample
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(1, fontPx * 0.035);
+  ctx.strokeStyle = '#ffffff';
+  ctx.strokeText(ch, HI / 2, HI / 2);
+  ctx.fillText(ch, HI / 2, HI / 2);
+
+  const { data } = ctx.getImageData(0, 0, HI, HI);
+  const alpha = downsampleAlpha(data, HI, HI, SIZE, SIZE);
+  const ink = alpha.filter((v) => v > 40).length;
+  console.log(`  U+${ch.charCodeAt(0).toString(16)} font=${fontPx}px ink=${ink}`);
+  return { width: SIZE, height: SIZE, alpha };
+}
+
+console.log(`Weather Icons soft bake → ${SIZE}×${SIZE} (×${SUPER} supersample)`);
 const sprites = {};
 for (const id of SPRITE_IDS) {
-  const filePath = path.join(xbmDir, `${id}.xbm`);
-  const content = fs.readFileSync(filePath, 'utf8');
-  sprites[id] = parseXbm(content);
+  console.log(id);
+  sprites[id] = renderGlyph(GLYPHS[id]);
 }
 
 const lines = [
   '// Generated by scripts/build-weather-sprites.mjs — do not edit by hand.',
-  '// Icons from https://github.com/Dhole/weather-pixel-icons (CC BY-SA 4.0)',
+  '// Soft alpha sprites from Erik Flowers Weather Icons (SIL OFL 1.1).',
+  '// https://erikflowers.github.io/weather-icons/',
   '',
   'export type WeatherSpriteId =',
   `  ${SPRITE_IDS.map((id) => `'${id}'`).join(' | ')};`,
@@ -56,24 +130,24 @@ const lines = [
   'export type WeatherSprite = {',
   '  width: number;',
   '  height: number;',
-  '  mask: readonly number[];',
+  '  /** Row-major alpha 0–255, length width * height. */',
+  '  alpha: readonly number[];',
   '};',
   '',
-  'export const WEATHER_SPRITE_SIZE = 32;',
+  `export const WEATHER_SPRITE_SIZE = ${SIZE};`,
   '',
   'export const WEATHER_SPRITES: Record<WeatherSpriteId, WeatherSprite> = {',
 ];
 
 for (const id of SPRITE_IDS) {
-  const { width, height, mask } = sprites[id];
-  lines.push(`  ${id}: { width: ${width}, height: ${height}, mask: [`);
-  for (let i = 0; i < mask.length; i += 32) {
-    lines.push(`    ${mask.slice(i, i + 32).join(',')},`);
+  const { width, height, alpha } = sprites[id];
+  lines.push(`  ${id}: { width: ${width}, height: ${height}, alpha: [`);
+  for (let i = 0; i < alpha.length; i += 32) {
+    lines.push(`    ${alpha.slice(i, i + 32).join(',')},`);
   }
   lines.push('  ] },');
 }
 
 lines.push('};', '');
-
-fs.writeFileSync(outFile, lines.join('\n'));
-console.log(`Wrote ${outFile}`);
+writeFileSync(OUT_PATH, lines.join('\n'));
+console.log(`Wrote ${OUT_PATH}`);

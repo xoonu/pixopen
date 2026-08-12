@@ -1,11 +1,12 @@
-# Weather pixel icons
+# Legacy: Dhole weather-pixel-icons
 
-32×32 monochrome icons from [Dhole/weather-pixel-icons](https://github.com/Dhole/weather-pixel-icons).
+Previously used as 1-bit XBM sources for weather sprites.
 
-License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
-
-Regenerate embedded sprites after updating XBM files:
+The live weather frame now bakes soft alpha sprites from
+**Erik Flowers Weather Icons** instead:
 
 ```bash
-node packages/renderer/scripts/build-weather-sprites.mjs
+npm run generate:weather-sprites -w @pixopen/renderer
 ```
+
+See `packages/renderer/fonts/WeatherIcons/`.

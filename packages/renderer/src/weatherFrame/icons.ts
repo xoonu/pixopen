@@ -1,5 +1,4 @@
 import { CANVAS_SIZE } from '@pixopen/core';
-import { setPx } from '../stockTicker/draw.js';
 import type { WeatherSpriteId } from './spriteData.js';
 import { WEATHER_SPRITES, WEATHER_SPRITE_SIZE } from './spriteData.js';
 
@@ -7,7 +6,7 @@ export { setPx, fillRect, hexToRgb, drawText, drawTextClipped, textWidth } from 
 
 export const WEATHER_ICON_SIZE = WEATHER_SPRITE_SIZE;
 
-/** Blit a 32×32 monochrome weather sprite from Dhole/weather-pixel-icons. */
+/** Soft-blit a 32×32 Weather Icons alpha sprite (Erik Flowers). */
 export function drawWeatherIcon(
   pixels: number[],
   x: number,
@@ -18,11 +17,16 @@ export function drawWeatherIcon(
   const sprite = WEATHER_SPRITES[spriteId];
   for (let row = 0; row < sprite.height; row++) {
     for (let col = 0; col < sprite.width; col++) {
-      if (!sprite.mask[row * sprite.width + col]) continue;
+      const a = (sprite.alpha[row * sprite.width + col] ?? 0) / 255;
+      if (a <= 0.02) continue;
       const px = x + col;
       const py = y + row;
       if (px < 0 || py < 0 || px >= CANVAS_SIZE || py >= CANVAS_SIZE) continue;
-      setPx(pixels, px, py, color);
+      const i = (py * CANVAS_SIZE + px) * 4;
+      pixels[i] = Math.round(pixels[i] + (color[0] - pixels[i]) * a);
+      pixels[i + 1] = Math.round(pixels[i + 1] + (color[1] - pixels[i + 1]) * a);
+      pixels[i + 2] = Math.round(pixels[i + 2] + (color[2] - pixels[i + 2]) * a);
+      pixels[i + 3] = 255;
     }
   }
 }

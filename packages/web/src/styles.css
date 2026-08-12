@@ -353,7 +353,9 @@
 .weather-frame-data-hint { @apply text-xs text-center m-0; }
 .weather-frame-section-title { @apply text-sm font-semibold text-fg m-0; }
 .weather-frame-location-panel { @apply grid gap-3; }
+.weather-frame-location-header { @apply flex items-center justify-between gap-3; }
 .weather-frame-location-hint { @apply text-sm m-0; }
+.weather-frame-location-list { @apply grid gap-2 list-none p-0 m-0; }
 .weather-frame-location-chip { @apply flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm; }
 .weather-frame-search-wrap { @apply relative grid gap-2; }
 .weather-frame-search-results { @apply absolute z-10 top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-surface-1 shadow-lg list-none p-1 m-0; }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CANVAS_SIZE, type WeatherSnapshot } from '@pixopen/core';
+import { CANVAS_SIZE, weatherFrameLocations, type WeatherSnapshot } from '@pixopen/core';
 import { parseWeatherFrameConfig, renderWeatherPreview } from '@pixopen/renderer';
 import { api } from '../lib/api';
 
@@ -21,38 +21,57 @@ function putFramePixels(ctx: CanvasRenderingContext2D, pixels: number[]) {
   }
 }
 
+function locationsKey(appConfig: Record<string, unknown>): string {
+  const config = parseWeatherFrameConfig(appConfig);
+  return JSON.stringify({
+    locations: weatherFrameLocations(config).map((loc) => ({
+      lat: loc.lat,
+      lon: loc.lon,
+      name: loc.name,
+    })),
+    unit: config.temperatureUnit,
+  });
+}
+
 export function WeatherPreview({ appConfig = {}, scale = 6, playing = true, className = '' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const configRef = useRef(appConfig);
   const playingRef = useRef(playing);
-  const snapshotRef = useRef<WeatherSnapshot | null>(null);
-  const [dataHint, setDataHint] = useState('Set a location to load weather');
+  const snapshotsRef = useRef<WeatherSnapshot[]>([]);
+  const [dataHint, setDataHint] = useState('Add a location to load weather');
+  const locKey = locationsKey(appConfig);
 
   configRef.current = appConfig;
   playingRef.current = playing;
 
   useEffect(() => {
     const config = parseWeatherFrameConfig(configRef.current);
-    if (!config.location) {
-      snapshotRef.current = null;
-      setDataHint('Set a location to load weather');
+    const locations = weatherFrameLocations(config);
+    if (locations.length === 0) {
+      snapshotsRef.current = [];
+      setDataHint('Add a location to load weather');
       return;
     }
 
     let cancelled = false;
     const load = () => {
       const current = parseWeatherFrameConfig(configRef.current);
-      if (!current.location) return;
-      void api.weather
-        .snapshot(current.location, current.temperatureUnit)
-        .then((snapshot) => {
+      const locs = weatherFrameLocations(current);
+      if (locs.length === 0) return;
+      void Promise.all(locs.map((loc) => api.weather.snapshot(loc, current.temperatureUnit)))
+        .then((snapshots) => {
           if (cancelled) return;
-          snapshotRef.current = snapshot;
-          setDataHint(`Live weather for ${snapshot.location.name}`);
+          snapshotsRef.current = snapshots;
+          const names = snapshots.map((s) => s.location.name).join(' · ');
+          setDataHint(
+            snapshots.length === 1
+              ? `Live weather for ${names}`
+              : `Cycling ${snapshots.length} places · ${names}`,
+          );
         })
         .catch((err) => {
           if (cancelled) return;
-          snapshotRef.current = null;
+          snapshotsRef.current = [];
           setDataHint(err instanceof Error ? err.message : 'Could not load weather');
         });
     };
@@ -63,10 +82,7 @@ export function WeatherPreview({ appConfig = {}, scale = 6, playing = true, clas
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [
-    JSON.stringify(appConfig.location),
-    appConfig.temperatureUnit,
-  ]);
+  }, [locKey]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -79,7 +95,7 @@ export function WeatherPreview({ appConfig = {}, scale = 6, playing = true, clas
 
     const draw = () => {
       const elapsed = playingRef.current ? Date.now() - start : 0;
-      const frame = renderWeatherPreview(configRef.current, snapshotRef.current, elapsed);
+      const frame = renderWeatherPreview(configRef.current, snapshotsRef.current, elapsed);
       putFramePixels(ctx, frame.pixels);
       raf = requestAnimationFrame(draw);
     };
