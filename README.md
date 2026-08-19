@@ -18,7 +18,7 @@ In **New project**, choose **Live Frames**:
 
 | Frame | What it does |
 |-------|----------------|
-| **Flip Note** | Split-flap letter board with rotating messages (1–3 lines). Font: Pixel or soft Figtree Bold. |
+| **Flip Note** | Rotating message board (1–3 lines). Font: Pixel or soft Figtree Bold. |
 | **Weather** | Current conditions from [Open-Meteo](https://open-meteo.com/) (no API key). Cycle up to **8** locations with a hold timer; °F/°C and color themes. |
 | **Stock Ticker** | Finnhub watchlist with rotate, dashboard, and paginated list layouts, plus sparklines and period (1D / 1W / 1M / YTD). |
 | **DVD Screensaver** | Classic bouncing DVD logo with speed, trail smoothness, size, and corner-hit tracking in the studio. |
@@ -70,7 +70,7 @@ Then open **http://localhost:3847**.
 
 ## Flip Note
 
-Customize rotating messages, line count, alignment, background (solid or gradient), and hold timing. Choose **Pixel** or **Figtree** for the letter style. Messages change on a hard cut (no flap animation).
+Customize rotating messages, line count, alignment, background (solid or gradient), and hold timing. Choose **Pixel** or **Figtree** for the letter style.
 
 ## Weather (Open-Meteo, no API key)
 

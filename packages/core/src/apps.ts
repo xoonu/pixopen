@@ -573,7 +573,7 @@ export const APP_TEMPLATES: AppTemplate[] = [
     name: 'Flip Note',
     type: 'live-sign',
     category: 'example',
-    description: 'Split-flap letter board with rotating messages you can customize.',
+    description: 'Rotating message board with customizable lines and fonts.',
     icon: '📋',
   },
   {
