@@ -30,8 +30,10 @@ export function smoothnessTrailStepCount(smoothness: number): number {
   return Math.min(MAX_TRAIL_FRAMES, Math.floor((s - 1) / 1.6));
 }
 
+/** Two-stage fade: near ghost, then a much dimmer echo. */
 export function smoothnessGhostAlpha(smoothness: number, stepIndex: number, totalSteps: number): number {
-  const base = 10 + normalizeSmoothness(smoothness) * 5;
-  const falloff = 1 - (stepIndex - 1) / (totalSteps + 1);
-  return Math.max(4, Math.round(base * falloff));
+  if (totalSteps <= 0) return 0;
+  const near = 10 + normalizeSmoothness(smoothness) * 4;
+  if (stepIndex <= 1) return near;
+  return Math.max(6, Math.round(near * 0.38));
 }

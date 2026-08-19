@@ -18,14 +18,15 @@ export function renderDvdScreensaverFromSimulator(
 
   const elapsedMs = sim.getElapsedMs();
   const trailSteps = smoothnessTrailStepCount(config.smoothness);
+  const state = sim.getState();
 
+  // Ghosts share the live logo color so the trail tracks bounce hues.
   for (let step = trailSteps; step >= 1; step--) {
     const ghost = sim.stateAt(Math.max(0, elapsedMs - step * DVD_DEVICE_FRAME_MS));
     const alpha = smoothnessGhostAlpha(config.smoothness, step, trailSteps);
-    drawDvdLogo(pixels, ghost.x, ghost.y, config.logoScale, ghost.colorIndex, alpha);
+    drawDvdLogo(pixels, ghost.x, ghost.y, config.logoScale, state.colorIndex, alpha);
   }
 
-  const state = sim.getState();
   drawDvdLogo(pixels, state.x, state.y, config.logoScale, state.colorIndex);
 
   return { width: CANVAS_SIZE, height: CANVAS_SIZE, pixels };

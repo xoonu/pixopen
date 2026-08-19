@@ -68,12 +68,21 @@ function exteriorOpenNeighbors(mask: LogoCell[], col: number, row: number): numb
   return open;
 }
 
-/** Main logo: solid fill with light edge AA. Trail ghosts: uniform fade, no edge pass. */
-function pixelAlpha(globalAlpha: number, openNeighbors: number): number {
-  if (globalAlpha < 255) return globalAlpha;
+/** Main logo: solid fill with light edge AA. Trail ghosts skip this pass. */
+function pixelAlpha(openNeighbors: number): number {
   if (openNeighbors === 0) return 255;
   if (openNeighbors >= 2) return 215;
   return 232;
+}
+
+/** Dim a logo color for trail ghosts — linear fade, same hue, no brightness lift. */
+function ghostTint(color: [number, number, number], alpha: number): [number, number, number] {
+  const t = Math.max(0, Math.min(1, alpha / 255));
+  return [
+    Math.round(color[0] * t),
+    Math.round(color[1] * t),
+    Math.round(color[2] * t),
+  ];
 }
 
 function drawLogoPixel(
@@ -107,7 +116,7 @@ function plotPixel(
   if (outA <= 0) return;
   pixels[i] = Math.round((color[0] * srcA + pixels[i] * dstA * (1 - srcA)) / outA);
   pixels[i + 1] = Math.round((color[1] * srcA + pixels[i + 1] * dstA * (1 - srcA)) / outA);
-  pixels[i + 2] = Math.round((color[2] * srcA + pixels[i] * dstA * (1 - srcA)) / outA);
+  pixels[i + 2] = Math.round((color[2] * srcA + pixels[i + 2] * dstA * (1 - srcA)) / outA);
   pixels[i + 3] = Math.round(outA * 255);
 }
 
@@ -127,18 +136,20 @@ export function drawDvdLogo(
   if (globalAlpha <= 0) return;
   const mask = logoMask();
   const color = DVD_COLOR_CYCLE[((colorIndex % DVD_COLOR_CYCLE.length) + DVD_COLOR_CYCLE.length) % DVD_COLOR_CYCLE.length];
+  const isGhost = globalAlpha < 255;
+  const drawColor = isGhost ? ghostTint(color, globalAlpha) : color;
 
   for (let row = 0; row < DVD_LOGO_H; row++) {
     for (let col = 0; col < DVD_LOGO_W; col++) {
       if (!isLogoAt(mask, col, row)) continue;
-      const alpha = pixelAlpha(globalAlpha, exteriorOpenNeighbors(mask, col, row));
+      const alpha = isGhost ? 255 : pixelAlpha(exteriorOpenNeighbors(mask, col, row));
 
       if (scale === 1) {
-        drawLogoPixel(pixels, x + col, y + row, color, alpha);
+        drawLogoPixel(pixels, x + col, y + row, drawColor, alpha);
       } else {
         for (let sy = 0; sy < 2; sy++) {
           for (let sx = 0; sx < 2; sx++) {
-            drawLogoPixel(pixels, x + col * 2 + sx, y + row * 2 + sy, color, alpha);
+            drawLogoPixel(pixels, x + col * 2 + sx, y + row * 2 + sy, drawColor, alpha);
           }
         }
       }
